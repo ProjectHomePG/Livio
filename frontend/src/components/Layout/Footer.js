@@ -1,152 +1,146 @@
+"use client";
+
 import React from 'react';
 import Link from 'next/link';
-import { Mail } from 'lucide-react';
-import LogoMark from '../Shared/LogoMark';
+import { Globe } from 'lucide-react';
+import LivioLogo from '../Shared/LivioLogo';
+import { usePreferences } from '@/context/PreferencesContext';
 
-const Twitter = (props) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+const TwitterIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
 
-const Facebook = (props) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+const FacebookIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
   </svg>
 );
 
-const Github = (props) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-    <path d="M9 18c-4.51 2-5-2-7-2" />
+const InstagramIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
   </svg>
 );
 
-/**
- * Footer component for PG Near Me.
- * Provides quick links, contact channels, and social media references.
- */
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
+  const { currentCurrency, setIsCurrencyModalOpen } = usePreferences();
 
   return (
-    <footer className="w-full bg-slate-900 text-slate-400 mt-auto border-t border-slate-800">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          
-          {/* Brand Column */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <LogoMark className="w-7 h-7" />
-              <span className="text-xl font-bold text-white bg-gradient-to-r from-primary-500 to-rose-400 bg-clip-text text-transparent">
-                PG Near Me
-              </span>
-            </div>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Find premium, verified Paying Guest accommodations near you. We offer convenient coliving options close to major colleges, corporate offices, and transit hubs.
-            </p>
-          </div>
-
-          {/* Quick Links Column */}
-          <div>
-            <h3 className="text-white text-sm font-semibold tracking-wider uppercase mb-4">Explore</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/search?query=Bangalore" className="hover:text-white transition-colors">PGs in Bangalore</Link>
-              </li>
-              <li>
-                <Link href="/search?query=Delhi" className="hover:text-white transition-colors">PGs in Delhi NCR</Link>
-              </li>
-              <li>
-                <Link href="/search?query=Mumbai" className="hover:text-white transition-colors">PGs in Mumbai</Link>
-              </li>
-              <li>
-                <Link href="/search" className="hover:text-white transition-colors">Advanced Search</Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Support Column */}
-          <div>
-            <h3 className="text-white text-sm font-semibold tracking-wider uppercase mb-4">Support & Legal</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/about-us" className="hover:text-white transition-colors">About Us</Link>
-              </li>
-              <li>
-                <Link href="/contact-us" className="hover:text-white transition-colors">Contact Us</Link>
-              </li>
-              <li>
-                <Link href="/terms-and-conditions" className="hover:text-white transition-colors">Terms of Service</Link>
-              </li>
-              <li>
-                <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-white transition-colors">FAQs</Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-white transition-colors">Report a Listing</Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Contact Column */}
-          <div className="space-y-3">
-            <h3 className="text-white text-sm font-semibold tracking-wider uppercase mb-4">Contact Us</h3>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-center text-slate-400">
-                <Mail className="w-4 h-4 mr-2.5 text-primary-500" />
-                <span>support@bestpgnearme.com</span>
-              </li>
-            </ul>
-          </div>
-
+    <footer className="w-full bg-[#F7F7F7] dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300 transition-colors">
+      <div className="max-w-[2520px] mx-auto px-4 sm:px-6 md:px-10 xl:px-20 py-12">
+        {/* Brand Header */}
+        <div className="pb-8 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <LivioLogo />
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md">
+            Livio (PG Near Me) - India&apos;s fastest discovery platform for verified PG accommodations, hostels, and premium co-living spaces.
+          </p>
         </div>
 
-        {/* Bottom Socials & Copyright */}
-        <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-xs">
-          <div className="text-slate-500">
-            &copy; {currentYear} PG Near Me. All rights reserved. Made for PG hunting made easy.
+        {/* Links Grid */}
+        <div className="py-10 grid grid-cols-1 md:grid-cols-4 gap-8 text-xs">
+          {/* Col 1: Popular Cities */}
+          <div>
+            <h4 className="font-bold text-slate-900 dark:text-white mb-3">Popular Cities</h4>
+            <ul className="space-y-2.5 text-slate-600 dark:text-slate-400">
+              <li><Link href="/search?query=Bengaluru" className="hover:underline">PG in Bengaluru</Link></li>
+              <li><Link href="/search?query=Delhi" className="hover:underline">PG in Delhi NCR</Link></li>
+              <li><Link href="/search?query=Mumbai" className="hover:underline">PG in Mumbai</Link></li>
+              <li><Link href="/search?query=Pune" className="hover:underline">PG in Pune</Link></li>
+              <li><Link href="/search?query=Hyderabad" className="hover:underline">PG in Hyderabad</Link></li>
+              <li><Link href="/search?query=Chennai" className="hover:underline">PG in Chennai</Link></li>
+            </ul>
           </div>
-          
-          <div className="flex space-x-5">
-            <a href="#" className="text-slate-500 hover:text-white transition-colors" aria-label="Twitter">
-              <Twitter className="w-4 h-4" />
-            </a>
-            <a href="#" className="text-slate-500 hover:text-white transition-colors" aria-label="Facebook">
-              <Facebook className="w-4 h-4" />
-            </a>
-            <a href="#" className="text-slate-500 hover:text-white transition-colors" aria-label="Github">
-              <Github className="w-4 h-4" />
-            </a>
+
+          {/* Col 2: Top Hubs */}
+          <div>
+            <h4 className="font-bold text-slate-900 dark:text-white mb-3">Tech Parks & Colleges</h4>
+            <ul className="space-y-2.5 text-slate-600 dark:text-slate-400">
+              <li><Link href="/search?query=Manyata" className="hover:underline">PG near Manyata Tech Park</Link></li>
+              <li><Link href="/search?query=Whitefield" className="hover:underline">PG near ITPL Whitefield</Link></li>
+              <li><Link href="/search?query=Gurugram" className="hover:underline">PG near DLF Cyber City</Link></li>
+              <li><Link href="/search?query=Koramangala" className="hover:underline">PG near Christ University</Link></li>
+              <li><Link href="/search?query=Powai" className="hover:underline">PG near IIT Bombay</Link></li>
+              <li><Link href="/search?query=Hinjewadi" className="hover:underline">PG near Hinjewadi Phase 1</Link></li>
+            </ul>
+          </div>
+
+          {/* Col 3: Hosting */}
+          <div>
+            <h4 className="font-bold text-slate-900 dark:text-white mb-3">Hosting on Livio</h4>
+            <ul className="space-y-2.5 text-slate-600 dark:text-slate-400">
+              <li><Link href="/admin/add-pg" className="hover:underline">List your PG Property</Link></li>
+              <li><Link href="/about-us" className="hover:underline">Owner Protection Plan</Link></li>
+              <li><Link href="/contact-us" className="hover:underline">Community Guidelines</Link></li>
+              <li><Link href="/login" className="hover:underline">Host Dashboard</Link></li>
+              <li><Link href="/contact-us" className="hover:underline">Owner FAQ</Link></li>
+            </ul>
+          </div>
+
+          {/* Col 4: Livio Support */}
+          <div>
+            <h4 className="font-bold text-slate-900 dark:text-white mb-3">Support & Legal</h4>
+            <ul className="space-y-2.5 text-slate-600 dark:text-slate-400">
+              <li><Link href="/contact-us" className="hover:underline">Help Centre</Link></li>
+              <li><Link href="/about-us" className="hover:underline">About Livio</Link></li>
+              <li><Link href="/privacy-policy" className="hover:underline">Privacy Policy</Link></li>
+              <li><Link href="/terms-and-conditions" className="hover:underline">Terms of Service</Link></li>
+              <li><Link href="/contact-us" className="hover:underline">Contact Support</Link></li>
+              <li><Link href="/sitemap.xml" className="hover:underline">Sitemap</Link></li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-600 dark:text-slate-400">
+          {/* Left Copyright */}
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1">
+            <span>© 2026 Livio, Inc. · PG Near Me™</span>
+            <span>·</span>
+            <Link href="/privacy-policy" className="hover:underline">Privacy</Link>
+            <span>·</span>
+            <Link href="/terms-and-conditions" className="hover:underline">Terms</Link>
+            <span>·</span>
+            <Link href="/sitemap.xml" className="hover:underline">Sitemap</Link>
+            <span>·</span>
+            <Link href="/about-us" className="hover:underline">Company details</Link>
+          </div>
+
+          {/* Right Language, Currency & Socials */}
+          <div className="flex items-center gap-6 font-semibold text-slate-900 dark:text-white">
+            <button
+              type="button"
+              onClick={() => setIsCurrencyModalOpen(true)}
+              className="flex items-center gap-2 hover:underline cursor-pointer"
+            >
+              <Globe className="w-4 h-4 text-slate-500" />
+              <span>English (IN)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsCurrencyModalOpen(true)}
+              className="hover:underline cursor-pointer"
+              title={`Active currency: ${currentCurrency?.label || 'Indian Rupee'}`}
+            >
+              <span>
+                {currentCurrency?.code === 'INR' ? '₹ INR' : `${currentCurrency?.symbol || '₹'} ${currentCurrency?.code}`}
+              </span>
+            </button>
+
+            {/* Social Icons */}
+            <div className="flex items-center gap-4 text-slate-800 dark:text-slate-200">
+              <a href="#" aria-label="Facebook" className="hover:text-primary-600 transition-colors">
+                <FacebookIcon className="w-4 h-4" />
+              </a>
+              <a href="#" aria-label="Twitter" className="hover:text-primary-600 transition-colors">
+                <TwitterIcon className="w-4 h-4" />
+              </a>
+              <a href="#" aria-label="Instagram" className="hover:text-primary-600 transition-colors">
+                <InstagramIcon className="w-4 h-4" />
+              </a>
+            </div>
           </div>
         </div>
       </div>

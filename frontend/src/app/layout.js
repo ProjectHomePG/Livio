@@ -2,7 +2,9 @@ import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/Layout/Navbar";
 import Footer from "../components/Layout/Footer";
+import MobileBottomNav from "../components/Layout/MobileBottomNav";
 import { ThemeProvider } from "../context/ThemeContext";
+import { PreferencesProvider } from "../context/PreferencesContext";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -19,24 +21,24 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:8082";
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "PG Near Me | Premium PG & Co-Living Spaces",
-    template: "%s | PG Near Me",
+    default: "Livio - PG Near Me | Verified PG, Rooms & Co-Living",
+    template: "%s | Livio - PG Near Me",
   },
-  description: "Find premium, verified PG (Paying Guest) rooms and co-living accommodations near tech parks, colleges, metro stations, and hospitals.",
-  keywords: ["PG", "Paying Guest", "Co-living", "Hostel", "Student Accommodation", "Rooms for rent"],
-  authors: [{ name: "PG Near Me" }],
+  description: "Livio (PG Near Me) - Discover premium, verified Paying Guest accommodations and co-living stays near tech parks, colleges, metro stations, and corporate hubs across India.",
+  keywords: ["Livio", "PG Near Me", "Paying Guest", "Co-living", "Hostel", "Student Accommodation", "Rooms for rent"],
+  authors: [{ name: "Livio" }],
   openGraph: {
-    title: "PG Near Me | Premium PG & Co-Living Spaces",
-    description: "Find premium, verified PG rooms and co-living accommodations.",
+    title: "Livio - PG Near Me | Verified PG, Rooms & Co-Living",
+    description: "Livio - Discover verified paying guest (PG) rooms and co-living spaces near you.",
     url: siteUrl,
-    siteName: "PG Near Me",
+    siteName: "Livio - PG Near Me",
     locale: "en_IN",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "PG Near Me | Premium PG & Co-Living Spaces",
-    description: "Find premium, verified PG rooms and co-living accommodations.",
+    title: "Livio - PG Near Me | Verified PG, Rooms & Co-Living",
+    description: "Livio - Discover verified paying guest (PG) rooms and co-living spaces near you.",
   },
 };
 
@@ -50,17 +52,20 @@ export default function RootLayout({ children }) {
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('livio-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('livio-theme');var isDark=t==='dark'||((!t||t==='system')&&window.matchMedia('(prefers-color-scheme:dark)').matches);var root=document.documentElement;if(isDark){root.classList.add('dark');root.classList.remove('light');root.setAttribute('data-theme','dark');root.style.colorScheme='dark';}else{root.classList.remove('dark');root.classList.add('light');root.setAttribute('data-theme','light');root.style.colorScheme='light';}}catch(e){}})();`,
           }}
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground selection:bg-primary-500 selection:text-white">
         <ThemeProvider>
-          <Navbar />
-          <main className="flex-grow w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 py-8 md:py-12">
-            {children}
-          </main>
-          <Footer />
+          <PreferencesProvider>
+            <Navbar />
+            <main className="flex-grow w-full">
+              {children}
+            </main>
+            <Footer />
+            <MobileBottomNav />
+          </PreferencesProvider>
         </ThemeProvider>
       </body>
     </html>

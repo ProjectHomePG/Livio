@@ -12,9 +12,9 @@ import {
 } from 'lucide-react';
 
 export const metadata = {
-  title: 'About Us',
+  title: 'About Us | Livio - PG Near Me',
   description:
-    'PG Near Me helps students and professionals find verified PG and co-living accommodations near colleges, tech parks, and metro stations across India.',
+    'Livio (PG Near Me) helps students and professionals find verified PG and co-living accommodations near colleges, tech parks, and metro stations across India.',
 };
 
 const STEPS = [
@@ -60,18 +60,18 @@ const VALUES = [
 
 export default function AboutUsPage() {
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
       {/* Hero */}
       <header className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-8 sm:p-12 space-y-4">
         <span className="text-xs font-bold uppercase tracking-widest text-primary-600 dark:text-primary-400">
-          About PG Near Me
+          About Livio - PG Near Me
         </span>
         <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white leading-tight">
           Finding a place to live should not take months.
         </h1>
         <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
-          PG Near Me is a listing platform for paying guest (PG) and co-living accommodations across India.
-          We connect seekers with verified hosts, so students and working professionals can find a room
+          Livio (PG Near Me) is India&apos;s modern discovery platform for paying guest (PG) and co-living accommodations.
+          We connect seekers directly with verified hosts, so students and working professionals can find a room
           near their college or workplace without paying a broker.
         </p>
         <div className="flex flex-wrap gap-3 pt-2">
@@ -79,7 +79,7 @@ export default function AboutUsPage() {
             href="/search"
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors"
           >
-            Browse PGs
+            Browse Stays
             <ArrowRight className="w-4 h-4" />
           </Link>
           <Link
@@ -94,9 +94,9 @@ export default function AboutUsPage() {
       {/* How it works */}
       <section className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-8 sm:p-12 space-y-6">
         <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-white">How PG Near Me works</h2>
+          <h2 className="text-xl font-black text-slate-900 dark:text-white">How Livio works</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Three steps between you and your next room.
+            Three simple steps between you and your next room.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -118,7 +118,7 @@ export default function AboutUsPage() {
       {/* Values */}
       <section className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-8 sm:p-12 space-y-6">
         <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-white">Why seekers pick PG Near Me</h2>
+          <h2 className="text-xl font-black text-slate-900 dark:text-white">Why seekers pick Livio</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             What we optimise for on every listing.
           </p>
@@ -142,7 +142,7 @@ export default function AboutUsPage() {
 
       {/* For hosts */}
       <section className="bg-gradient-to-r from-primary-600 to-rose-500 rounded-3xl shadow-sm p-8 sm:p-12 text-white space-y-4">
-        <h2 className="text-xl font-black">List your property on PG Near Me</h2>
+        <h2 className="text-xl font-black">List your property on Livio</h2>
         <p className="text-sm text-white/85 leading-relaxed max-w-3xl">
           Hosts and property owners can create a dashboard, publish listings with photos and amenities,
           and receive booking inquiries from verified seekers. It takes a few minutes to get started.
