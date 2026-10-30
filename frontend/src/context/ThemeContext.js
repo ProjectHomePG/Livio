@@ -11,21 +11,29 @@ export function ThemeProvider({ children }) {
   const applyTheme = useCallback((mode) => {
     let resolved = mode;
     if (mode === "system") {
-      resolved = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
+      resolved =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
     }
     setResolvedTheme(resolved);
-    const root = document.documentElement;
-    root.classList.remove("light", "dark");
-    root.classList.add(resolved);
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+      root.classList.remove("light", "dark");
+      root.classList.add(resolved);
+      root.setAttribute("data-theme", resolved);
+      root.style.colorScheme = resolved;
+    }
   }, []);
 
   const setTheme = useCallback(
     (mode) => {
       setThemeState(mode);
       if (typeof window !== "undefined") {
-        localStorage.setItem("livio-theme", mode);
+        try {
+          localStorage.setItem("livio-theme", mode);
+        } catch (e) {}
       }
       applyTheme(mode);
     },
@@ -33,13 +41,20 @@ export function ThemeProvider({ children }) {
   );
 
   useEffect(() => {
-    const saved = localStorage.getItem("livio-theme") || "system";
+    let saved = "system";
+    try {
+      saved = localStorage.getItem("livio-theme") || "system";
+    } catch (e) {}
     setThemeState(saved);
     applyTheme(saved);
 
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = () => {
-      if ((localStorage.getItem("livio-theme") || "system") === "system") {
+      let current = "system";
+      try {
+        current = localStorage.getItem("livio-theme") || "system";
+      } catch (e) {}
+      if (current === "system") {
         applyTheme("system");
       }
     };
