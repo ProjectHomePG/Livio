@@ -8,9 +8,6 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-  "vars": {
-    "INTERNAL_API_URL": "https://pgnearme.onrender.com"
-  },
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",

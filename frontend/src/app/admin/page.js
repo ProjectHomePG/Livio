@@ -43,16 +43,10 @@ export default function AdminDashboardPage() {
     setInitialized(true);
   }, [router]);
 
-  useEffect(() => {
-    if (initialized) {
-      loadData();
-    }
-  }, [initialized, userRole, router]);
-
   const loadData = async () => {
     if (!initialized) return;
     console.log('Admin page - loading data for role:', userRole);
-    
+
     try {
       let data;
       if (userRole === 'ROLE_ADMIN') {
@@ -69,15 +63,16 @@ export default function AdminDashboardPage() {
       setPgs(data);
     } catch (err) {
       console.error("Failed to load PGs:", err);
-      // If API call fails (e.g., 403), redirect to home
-      if (err.response?.status === 403) {
-        router.push('/');
-        return;
-      }
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (initialized) {
+      loadData();
+    }
+  }, [initialized, userRole, router]);
 
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this listing?")) return;

@@ -1,0 +1,15 @@
+{
+  "name": "supabase-migration-scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "export": "./export-h2.sh",
+    "apply-schema": "node --env-file=../../.env.migrate apply-schema.mjs",
+    "load": "node --env-file=../../.env.migrate load.mjs",
+    "upload-images": "node --env-file=../../.env.migrate upload-images.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "pg": "^8.13.0"
+  }
+}

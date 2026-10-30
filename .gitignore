@@ -11,6 +11,13 @@ frontend/yarn-error.log*
 frontend/.pnp*
 frontend/.pnp.js
 
+# Migration scripts
+.env.migrate
+scripts/supabase/node_modules/
+
+# Scraper scripts
+scraper/scripts/node_modules/
+
 # Spring Boot Backend Ignores
 backend/target/
 backend/*.jar

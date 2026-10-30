@@ -26,10 +26,6 @@ export default function PGCard({ pg }) {
     }
   };
 
-  useEffect(() => {
-    checkFavoriteStatus();
-  }, [pg.id]);
-
   const checkFavoriteStatus = async () => {
     if (authService.isAuthenticated()) {
       try {
@@ -40,6 +36,10 @@ export default function PGCard({ pg }) {
       }
     }
   };
+
+  useEffect(() => {
+    checkFavoriteStatus();
+  }, [pg.id]);
 
   const handleFavoriteClick = async (e) => {
     e.preventDefault();

@@ -19,7 +19,6 @@ function EditPGContent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  const [userId, setUserId] = useState(null);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -39,34 +38,26 @@ function EditPGContent() {
     }
     
     setUserRole(user.role);
-    setUserId(user.id);
     setInitialized(true);
-    loadData();
-  }, [id, router]);
 
-  const loadData = async () => {
-    if (!initialized) return;
-    
-    try {
-      const data = await pgService.getById(id);
-      // Check if owner is trying to edit someone else's PG
-      if (userRole === 'ROLE_OWNER' && data.owner?.id !== userId) {
-        console.log('Owner trying to edit another owner\'s PG');
-        router.push('/admin');
-        return;
+    (async () => {
+      try {
+        const data = await pgService.getById(id);
+        // Check if owner is trying to edit someone else's PG
+        if (user.role === 'ROLE_OWNER' && data.owner?.id !== user.id) {
+          console.log('Owner trying to edit another owner\'s PG');
+          router.push('/admin');
+          return;
+        }
+        setPg(data);
+      } catch (err) {
+        console.error("Failed to load PG:", err);
+        setError(err.message || "Failed to fetch PG stay details.");
+      } finally {
+        setLoading(false);
       }
-      setPg(data);
-    } catch (err) {
-      console.error("Failed to load PG:", err);
-      if (err.response?.status === 403) {
-        router.push('/admin');
-        return;
-      }
-      setError(err.message || "Failed to fetch PG stay details.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    })();
+  }, [id, router]);
 
   const handleSubmit = async (formData) => {
     setSubmitting(true);

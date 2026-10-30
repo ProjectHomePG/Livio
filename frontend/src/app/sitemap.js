@@ -1,5 +1,6 @@
+import { createClient } from '@supabase/supabase-js';
+
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:8082";
-const apiBaseUrl = process.env.INTERNAL_API_URL || "http://127.0.0.1:8083";
 
 export const dynamic = "force-static";
 export const revalidate = 86400;
@@ -14,24 +15,29 @@ const staticPages = [
 ];
 
 function toDate(value) {
-  if (Array.isArray(value) && value.length >= 3) {
-    const [year, month, day, hour = 0, minute = 0, second = 0] = value;
-    return new Date(year, month - 1, day, hour, minute, second);
-  }
+  if (!value) return new Date();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
 async function getListingEntries() {
   try {
-    const res = await fetch(`${apiBaseUrl}/api/pgs`, { signal: AbortSignal.timeout(15000) });
-    if (!res.ok) return [];
-    const pgs = await res.json();
-    return pgs
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    if (!url || !key) return [];
+
+    const supabase = createClient(url, key, { auth: { persistSession: false } });
+    const { data, error } = await supabase
+      .from('pgs')
+      .select('slug, updated_at, created_at')
+      .limit(10000);
+    if (error || !data) return [];
+
+    return data
       .filter((pg) => pg && pg.slug)
       .map((pg) => ({
         url: `${baseUrl}/pg?slug=${pg.slug}`,
-        lastModified: toDate(pg.updatedAt ?? pg.createdAt),
+        lastModified: toDate(pg.updated_at ?? pg.created_at),
         changeFrequency: "weekly",
         priority: 0.7,
       }));

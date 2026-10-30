@@ -14,14 +14,6 @@ export default function FavoritesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
-    loadFavorites();
-  }, [router]);
-
   const loadFavorites = async () => {
     setIsLoading(true);
     setError(null);
@@ -35,6 +27,14 @@ export default function FavoritesPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!authService.isAuthenticated()) {
+      router.push('/login');
+      return;
+    }
+    loadFavorites();
+  }, [router]);
 
   const handleRemoveFavorite = async (pgId) => {
     try {

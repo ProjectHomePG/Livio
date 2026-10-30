@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
@@ -6,34 +6,9 @@ on:
   pull_request:
     branches: [ main, master ]
 
-env:
-  REGISTRY: ghcr.io
-  # Image names converted to lowercase to match GHCR requirements
-  BACKEND_IMAGE_NAME: ${{ github.repository }}-backend
-  FRONTEND_IMAGE_NAME: ${{ github.repository }}-frontend
-
 jobs:
-  build-and-test-backend:
-    name: Backend Build & Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'maven'
-
-      - name: Build and Test with Maven
-        run: |
-          cd backend
-          mvn clean package -B
-
-  build-and-test-frontend:
-    name: Frontend Build & Lint
+  frontend:
+    name: Frontend Lint & Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -58,61 +33,9 @@ jobs:
 
       - name: Build Next.js project
         env:
-          NEXT_PUBLIC_API_URL: /api
+          NEXT_PUBLIC_SUPABASE_URL: https://qtnevwoavtfipksvxipw.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_IEUMfs3TrTbS31mFq34Dug_pl7qOQUi
+          NEXT_PUBLIC_SITE_URL: https://bestpgnearme.com
         run: |
           cd frontend
           npm run build
-
-
-  build-and-push-images:
-    name: Build & Push Docker Images
-    needs: [build-and-test-backend, build-and-test-frontend]
-    runs-on: ubuntu-latest
-    # Only build and push container images when code is merged/pushed to main/master branches
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          # Use default GitHub GITHUB_TOKEN secret for authentication
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Downcase Image Names
-        run: |
-          echo "BACKEND_IMAGE_LOWER=$(echo ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-          echo "FRONTEND_IMAGE_LOWER=$(echo ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
-      - name: Build and Push Backend Image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: true
-          tags: |
-            ${{ env.BACKEND_IMAGE_LOWER }}:latest
-            ${{ env.BACKEND_IMAGE_LOWER }}:${{ github.sha }}
-
-      - name: Build and Push Frontend Image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: true
-          build-args: |
-            NEXT_PUBLIC_API_URL=/api
-          tags: |
-            ${{ env.FRONTEND_IMAGE_LOWER }}:latest
-            ${{ env.FRONTEND_IMAGE_LOWER }}:${{ github.sha }}
-

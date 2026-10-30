@@ -14,6 +14,7 @@ OUTPUT_DIR="$SCRIPT_DIR/../output"
 # Parse args
 CITY=""
 PROXY=""
+SKIP_IMAGES=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -21,12 +22,16 @@ while [[ $# -gt 0 ]]; do
             PROXY="$2"
             shift 2
             ;;
+        --no-images)
+            SKIP_IMAGES="1"
+            shift
+            ;;
         *)
             if [ -z "$CITY" ]; then
                 CITY="$1"
             else
                 echo "Error: unexpected argument '$1'"
-                echo "Usage: ./scrape-city.sh <city> [--proxy <proxy_string>]"
+                echo "Usage: ./scrape-city.sh <city> [--proxy <proxy_string>] [--no-images]"
                 exit 1
             fi
             shift
@@ -86,6 +91,21 @@ echo "=========================================="
 echo "Scraping complete!"
 echo "Output: $OUTPUT_FILE"
 echo "=========================================="
+
+# Google removed the photo gallery from the place-page data blob, so the
+# scraper's `images` column comes back empty. Recover the galleries from the
+# rendered place pages with Playwright (skippable with --no-images).
+if [ -z "$SKIP_IMAGES" ] && [ -f "$OUTPUT_FILE" ]; then
+    if ! command -v node &> /dev/null; then
+        echo "node not found - skipping photo fetch"
+    elif [ ! -d "$SCRIPT_DIR/node_modules/playwright" ]; then
+        echo "Playwright not installed - run 'cd scripts && npm install' to enable photo fetch"
+    else
+        echo ""
+        echo "Fetching photo galleries (this visits each place page)..."
+        node "$SCRIPT_DIR/fetch-images.mjs" "$OUTPUT_FILE" || echo "Photo fetch finished with errors (CSV kept as-is)"
+    fi
+fi
 
 if command -v csvtool &> /dev/null; then
     echo "Rows extracted: $(csvtool -h "$OUTPUT_FILE" | wc -l)"

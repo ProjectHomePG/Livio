@@ -1,0 +1,12 @@
+{
+  "name": "pg-scraper-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Post-scrape enrichment for gosom/google-maps-scraper output",
+  "scripts": {
+    "fetch-images": "node fetch-images.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.64.0"
+  }
+}

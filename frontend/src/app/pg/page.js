@@ -9,6 +9,7 @@ import authService from '../../services/authService';
 import ImageGallery from '../../components/Details/ImageGallery';
 import Amenities from '../../components/Details/Amenities';
 import ReviewList from '../../components/Details/ReviewList';
+import FoodQualityChart from '../../components/Details/FoodQualityChart';
 import NearbyPlaces from '../../components/Details/NearbyPlaces';
 import ContactOwner from '../../components/Details/ContactOwner';
 import MapView from '../../components/Search/MapView';
@@ -196,6 +197,11 @@ function PGDetailsContent() {
           <NearbyPlaces places={pg.nearbyPlaces} />
 
           <hr className="border-slate-100 dark:border-slate-800" />
+
+          <hr className="border-slate-100 dark:border-slate-800" />
+
+          {/* Food quality insights extracted from review keywords */}
+          <FoodQualityChart reviews={pg.reviews} />
 
           {/* Review list */}
           <ReviewList pgId={pg.id} />

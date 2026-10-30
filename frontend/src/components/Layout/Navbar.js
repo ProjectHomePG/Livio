@@ -20,6 +20,18 @@ export default function Navbar() {
 
   useEffect(() => {
     setUser(authService.getCurrentUser());
+
+    authService.getSessionUser().then((sessionUser) => {
+      if (sessionUser) setUser(sessionUser);
+    });
+
+    const { data: authListener } = authService.onAuthStateChange?.((updatedUser) => {
+      setUser(updatedUser);
+    }) || {};
+
+    return () => {
+      authListener?.subscription?.unsubscribe?.();
+    };
   }, []);
 
   const handleLogout = async () => {

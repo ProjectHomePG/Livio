@@ -19,10 +19,23 @@ scraper/
 │   └── pune.txt
 ├── output/                  # Scraped CSV files
 └── scripts/
-    └── scrape-city.sh      # Batch scrape script
+    ├── scrape-city.sh      # Batch scrape script
+    └── fetch-images.mjs    # Photo-gallery recovery (Playwright)
 ```
 
 ## Usage
+
+### One-time setup for photo fetching
+
+Google no longer includes the photo gallery in the data the Docker scraper
+reads, so `scrape-city.sh` runs `scripts/fetch-images.mjs` afterwards to
+recover galleries from the rendered place pages. Enable it once:
+
+```bash
+cd scraper/scripts
+npm install
+npx playwright install chromium
+```
 
 ### Scrape a single city
 
@@ -30,6 +43,8 @@ scraper/
 cd scraper
 ./scripts/scrape-city.sh mumbai
 ```
+
+Pass `--no-images` to skip the photo-fetch step.
 
 ### Scrape all cities (one by one)
 
@@ -42,54 +57,37 @@ for city in mumbai bangalore delhi pune; do
 done
 ```
 
-### Import scraped data to backend
+### Import scraped data to Supabase
+
+The old Spring Boot import endpoints are gone — use the Supabase importer instead
+(keeps the same heuristics: city-based price estimates, gender inference from
+title, place-ID dedupe, Google-reviews import):
 
 ```bash
-# Start the backend server
-cd ../backend
-mvn spring-boot:run
+cd scripts/supabase
 
-# Import CSV (in another terminal)
-curl -X POST http://localhost:8083/api/admin/import/google-maps \
-  -F "file=@../scraper/output/mumbai_20260910_120000.csv" \
-  -F "city=Mumbai"
+# Dry run: see what would be imported/updated
+node --env-file=../../.env.migrate import-scraper.mjs ../../scraper/output --dry-run
+
+# Import only NEW PGs (skip anything already in the DB — recommended)
+node --env-file=../../.env.migrate import-scraper.mjs ../../scraper/output --new-only
+
+# Import a single city file
+node --env-file=../../.env.migrate import-scraper.mjs ../../scraper/output/noida_20261011_205637.csv --new-only
 ```
 
-The import endpoint needs no auth. Place IDs are used for deduplication, so
-re-importing the same CSV skips PGs that already exist.
-
-Verify the import locally:
-
-```bash
-curl -s http://localhost:8083/api/pgs | python3 -c "import json,sys; print(len(json.load(sys.stdin)))"
-```
-
-Imported PGs land in `backend/data/` (local dev database, git-ignored) and
-images are downloaded to `backend/data/images/`. They are **not live yet**.
-
-### Publish new PGs to the live site
-
-The Render deployment serves the git-tracked `data/` snapshot (database +
-images), so local imports must be copied into it and pushed:
-
-```bash
-# From the repo root
-cp backend/data/livio_db.mv.db data/livio_db.mv.db
-rsync -a backend/data/images/ data/images/
-
-git add data/
-git commit -m "add scraped pgs"
-git push
-```
-
-Render auto-deploys on push (~5-10 minutes), after which the site at
-workers.dev lists the new PGs. Every deploy resets to the last committed
-`data/` snapshot, so always commit after importing.
+Notes:
+- **Always use `--new-only`** for re-runs — without it, existing PGs are updated
+  (prices/description reset from CSV).
+- Flags: `--city <fallback>`, `--owner <email>`, `--status APPROVED|PENDING_VERIFICATION`,
+  `--place-ids a,b,c` (targeted), `--limit <n>`, `--dry-run`.
+- Images download straight into the Supabase `pg-images` bucket (public URLs).
+- PGs land owned by `owner@example.com`; edit them later in the admin UI (`/admin`).
 
 
 ## CSV Output Format
 
-The scraper outputs CSV with these columns:
+The scraper outputs a 36-column CSV (gosom format). Common columns:
 
 | Column | Description |
 |--------|-------------|
@@ -97,14 +95,23 @@ The scraper outputs CSV with these columns:
 | address | Full address |
 | phone | Phone number |
 | website | Website URL |
-| totalScore | Google rating (0-5) |
-| reviewsCount | Number of reviews |
-| latitude | GPS latitude |
-| longitude | GPS longitude |
-| placeId | Google Place ID (used for deduplication) |
-| imageUrl | Primary image URL |
-| openingHours | Operating hours |
-| categoryName | Business category |
+| review_rating | Google rating (0-5) |
+| review_count | Number of reviews |
+| latitude / longitude | GPS coordinates |
+| place_id | Google Place ID (used for deduplication) |
+| thumbnail | Primary image URL |
+| images | JSON array of `{"title","image"}` photo-gallery entries |
+| open_hours | Operating hours |
+| category | Business category |
+
+### Backfilling photos on old CSVs
+
+CSVs scraped while the gallery was broken can be repaired in place:
+
+```bash
+cd scraper/scripts
+node fetch-images.mjs ../output/<city>_<timestamp>.csv
+```
 
 ## Rate Limiting
 
