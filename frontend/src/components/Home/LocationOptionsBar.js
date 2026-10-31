@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { usePreferences } from '@/context/PreferencesContext';
+import { getCurrentCoords } from '@/utils/geolocation';
 
 export const LOCATION_OPTIONS = [
   { id: 'near_me', label: 'Near Me', sub: 'Live GPS', icon: Navigation, isGps: true },
@@ -63,33 +64,20 @@ export default function LocationOptionsBar({ selectedLocation = 'all', onSelectL
     setTimeout(checkScroll, 350);
   };
 
-  const handleSelect = (option) => {
+  const handleSelect = async (option) => {
     if (option.isGps) {
-      if (!('geolocation' in navigator)) {
-        setGpsError('Geolocation is not supported by your browser.');
-        return;
-      }
-
       setGpsLoading(true);
       setGpsError(null);
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setGpsLoading(false);
-          const coords = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          };
-          setUserCoords(coords);
-          onSelectLocation?.('near_me', coords);
-        },
-        (err) => {
-          setGpsLoading(false);
-          setGpsError('Location permission denied or unavailable.');
-          onSelectLocation?.('all');
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      );
+      try {
+        const coords = await getCurrentCoords();
+        setUserCoords(coords);
+        onSelectLocation?.('near_me', coords);
+      } catch (err) {
+        setGpsError(err?.message || 'Location permission denied or unavailable.');
+        onSelectLocation?.('all');
+      } finally {
+        setGpsLoading(false);
+      }
       return;
     }
 

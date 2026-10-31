@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Save, PlusCircle, Trash } from 'lucide-react';
+import { Save, PlusCircle, Trash, Navigation } from 'lucide-react';
+import { getCurrentCoords } from '@/utils/geolocation';
 
 /**
  * PGForm component.
@@ -18,6 +19,9 @@ export default function PGForm({ initialData = null, onSubmit, submitting = fals
   const [genderType, setGenderType] = useState('MALE');
   const [sharingType, setSharingType] = useState('DOUBLE');
   const [rules, setRules] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [locating, setLocating] = useState(false);
 
   // Load initialData if present (Edit mode)
   useEffect(() => {
@@ -32,8 +36,27 @@ export default function PGForm({ initialData = null, onSubmit, submitting = fals
       setGenderType(initialData.genderType || 'MALE');
       setSharingType(initialData.sharingType || 'DOUBLE');
       setRules(initialData.rules || '');
+      setLatitude(
+        typeof initialData.latitude === 'number' ? String(initialData.latitude) : ''
+      );
+      setLongitude(
+        typeof initialData.longitude === 'number' ? String(initialData.longitude) : ''
+      );
     }
   }, [initialData]);
+
+  const handleUseMyLocation = async () => {
+    setLocating(true);
+    try {
+      const coords = await getCurrentCoords();
+      setLatitude(String(coords.lat));
+      setLongitude(String(coords.lng));
+    } catch (err) {
+      alert(err?.message || 'Could not access your location.');
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -47,7 +70,9 @@ export default function PGForm({ initialData = null, onSubmit, submitting = fals
       zipCode,
       genderType,
       sharingType,
-      rules
+      rules,
+      latitude: latitude === '' ? null : Number(latitude),
+      longitude: longitude === '' ? null : Number(longitude),
     });
   };
 
@@ -160,6 +185,46 @@ export default function PGForm({ initialData = null, onSubmit, submitting = fals
             className="w-full bg-slate-50 dark:bg-slate-900 text-xs font-semibold p-3.5 rounded-xl border border-slate-100 dark:border-slate-700 outline-none focus:border-primary-500 transition-colors"
             required
           />
+        </div>
+
+        {/* Latitude */}
+        <div>
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+            Latitude <span className="normal-case font-medium">(optional — powers &quot;Near Me&quot;)</span>
+          </label>
+          <input
+            type="number"
+            step="any"
+            value={latitude}
+            onChange={(e) => setLatitude(e.target.value)}
+            placeholder="e.g. 12.9716"
+            className="w-full bg-slate-50 dark:bg-slate-900 text-xs font-semibold p-3.5 rounded-xl border border-slate-100 dark:border-slate-700 outline-none focus:border-primary-500 transition-colors"
+          />
+        </div>
+
+        {/* Longitude */}
+        <div>
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Longitude</label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              step="any"
+              value={longitude}
+              onChange={(e) => setLongitude(e.target.value)}
+              placeholder="e.g. 77.5946"
+              className="w-full bg-slate-50 dark:bg-slate-900 text-xs font-semibold p-3.5 rounded-xl border border-slate-100 dark:border-slate-700 outline-none focus:border-primary-500 transition-colors"
+            />
+            <button
+              type="button"
+              onClick={handleUseMyLocation}
+              disabled={locating}
+              title="Fill coordinates from your current location"
+              className="flex items-center gap-1.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary-500 text-xs font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-50 cursor-pointer transition-colors whitespace-nowrap"
+            >
+              <Navigation className={`w-3.5 h-3.5 ${locating ? 'animate-pulse' : 'text-primary-500'}`} />
+              {locating ? 'Locating…' : 'Use my location'}
+            </button>
+          </div>
         </div>
 
         {/* Rules */}

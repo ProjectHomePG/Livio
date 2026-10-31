@@ -11,6 +11,7 @@ import FilterModal from '../Home/FilterModal';
 import MapView from './MapView';
 import LoadingSkeleton from '../Shared/LoadingSkeleton';
 import { usePreferences } from '@/context/PreferencesContext';
+import { getCurrentCoords } from '@/utils/geolocation';
 
 function distanceKm(lat1, lon1, lat2, lon2) {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -53,6 +54,11 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isNearMeMode, setIsNearMeMode] = useState(false);
+  const [locating, setLocating] = useState(false);
+
+  const hasNearMeCoords =
+    !isNearMeMode ||
+    (userCoords && typeof userCoords.lat === 'number' && typeof userCoords.lng === 'number');
 
   // Sync from URL params
   useEffect(() => {
@@ -74,14 +80,19 @@ export default function SearchPage() {
     try {
       const data = await pgService.search(currentFilters.query || '', currentFilters);
       let list = data || [];
-      if (isNearMeMode && userCoords && typeof userCoords.lat === 'number') {
-        list = list
-          .filter((p) => typeof p.latitude === 'number' && typeof p.longitude === 'number')
-          .map((p) => ({
-            ...p,
-            distance: distanceKm(userCoords.lat, userCoords.lng, p.latitude, p.longitude),
-          }))
-          .sort((a, b) => a.distance - b.distance);
+      if (isNearMeMode) {
+        if (userCoords && typeof userCoords.lat === 'number') {
+          list = list
+            .filter((p) => typeof p.latitude === 'number' && typeof p.longitude === 'number')
+            .map((p) => ({
+              ...p,
+              distance: distanceKm(userCoords.lat, userCoords.lng, p.latitude, p.longitude),
+            }))
+            .sort((a, b) => a.distance - b.distance);
+        } else {
+          // Near-me mode without GPS coords — wait for location instead of showing unsorted results
+          list = [];
+        }
       }
       setResults(list);
     } catch (err) {
@@ -113,6 +124,18 @@ export default function SearchPage() {
       const updated = { ...filters, query: locId };
       setFilters(updated);
       router.push(`/search?query=${encodeURIComponent(locId)}`);
+    }
+  };
+
+  const handleEnableLocation = async () => {
+    setLocating(true);
+    try {
+      const coords = await getCurrentCoords();
+      setUserCoords(coords);
+    } catch {
+      // stays on the prompt so the user can retry
+    } finally {
+      setLocating(false);
     }
   };
 
@@ -225,6 +248,24 @@ export default function SearchPage() {
                     <div className="h-4 w-1/3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
                   </div>
                 ))}
+              </div>
+            ) : isNearMeMode && !hasNearMeCoords ? (
+              <div className="text-center py-24 max-w-md mx-auto">
+                <Navigation className="w-12 h-12 text-primary-500 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                  See stays near you
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                  Allow location access and we&apos;ll list the closest PGs first, with distances.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleEnableLocation}
+                  disabled={locating}
+                  className="px-6 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-bold text-xs cursor-pointer transition-colors"
+                >
+                  {locating ? 'Locating...' : 'Enable location'}
+                </button>
               </div>
             ) : results.length > 0 ? (
               <PGGrid pgs={results} />

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { usePreferences } from '@/context/PreferencesContext';
 import { pgService } from '@/services/pgService';
+import { getCurrentCoords } from '@/utils/geolocation';
 
 export const LOCATION_CATEGORIES = {
   cities: [
@@ -171,26 +172,18 @@ export default function AirbnbSearchBar() {
     };
   }, [location]);
 
-  const handleUseCurrentLocation = () => {
-    if (!('geolocation' in navigator)) {
-      alert('Geolocation is not supported by your browser.');
-      return;
-    }
+  const handleUseCurrentLocation = async () => {
     setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGpsLoading(false);
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserCoords(coords);
-        setLocation('Near Me');
-        setActiveTab('checkin');
-      },
-      () => {
-        setGpsLoading(false);
-        alert('Could not access your location. Please type your city instead.');
-      },
-      { timeout: 8000 }
-    );
+    try {
+      const coords = await getCurrentCoords({ timeout: 8000 });
+      setUserCoords(coords);
+      setLocation('Near Me');
+      setActiveTab('checkin');
+    } catch (err) {
+      alert(err?.message || 'Could not access your location. Please type your city instead.');
+    } finally {
+      setGpsLoading(false);
+    }
   };
 
   const handleSelectLocationSuggestion = (locName) => {

@@ -11,6 +11,7 @@ import MapView from '../components/Search/MapView';
 import InspirationFooter from '../components/Home/InspirationFooter';
 import { usePreferences } from '../context/PreferencesContext';
 import { MapPin, X, Navigation } from 'lucide-react';
+import { getCurrentCoords } from '../utils/geolocation';
 
 function distanceKm(lat1, lon1, lat2, lon2) {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -39,6 +40,11 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [activeFilters, setActiveFilters] = useState(null);
+  const [locating, setLocating] = useState(false);
+
+  const hasNearMeCoords =
+    selectedLocation !== 'near_me' ||
+    (userCoords && typeof userCoords.lat === 'number' && typeof userCoords.lng === 'number');
 
   // Load all PGs from Supabase
   useEffect(() => {
@@ -63,6 +69,19 @@ export default function HomePage() {
     }
   };
 
+  // Re-request GPS when near-me is active but coords are missing
+  const handleEnableLocation = async () => {
+    setLocating(true);
+    try {
+      const coords = await getCurrentCoords();
+      setUserCoords(coords);
+    } catch {
+      // stays on the prompt so the user can retry
+    } finally {
+      setLocating(false);
+    }
+  };
+
   // Filter listings based on location, active category & filter modal settings
   const filteredPgs = useMemo(() => {
     let result = [...pgs];
@@ -77,6 +96,9 @@ export default function HomePage() {
             distance: distanceKm(userCoords.lat, userCoords.lng, pg.latitude, pg.longitude),
           }))
           .sort((a, b) => a.distance - b.distance);
+      } else {
+        // No GPS coords yet — show the enable-location prompt instead of unsorted listings
+        result = [];
       }
     } else if (selectedLocation && selectedLocation !== 'all') {
       const query = selectedLocation.toLowerCase();
@@ -206,7 +228,11 @@ export default function HomePage() {
               {selectedLocation === 'near_me' ? (
                 <>
                   <Navigation className="w-4 h-4 text-primary-500 animate-pulse" />
-                  <span>Stays sorted by closest distance to your live location</span>
+                  <span>
+                    {hasNearMeCoords
+                      ? 'Stays sorted by closest distance to your live location'
+                      : 'Enable location to sort stays by distance'}
+                  </span>
                 </>
               ) : (
                 <>
@@ -263,6 +289,26 @@ export default function HomePage() {
               </div>
             ) : filteredPgs.length > 0 ? (
               <PGGrid pgs={filteredPgs} />
+            ) : selectedLocation === 'near_me' && !hasNearMeCoords ? (
+              <div className="py-20 text-center max-w-md mx-auto space-y-4">
+                <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-primary-500">
+                  <Navigation className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  See stays near you
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Allow location access and we&apos;ll list the closest PGs first, with walking distances.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleEnableLocation}
+                  disabled={locating}
+                  className="px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-bold text-xs cursor-pointer transition-colors"
+                >
+                  {locating ? 'Locating...' : 'Enable location'}
+                </button>
+              </div>
             ) : (
               <div className="py-20 text-center max-w-md mx-auto space-y-4">
                 <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">

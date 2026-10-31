@@ -78,6 +78,12 @@ function toRow(data) {
   if (data.rules !== undefined) row.rules = data.rules;
   if (data.genderType !== undefined) row.gender_type = data.genderType;
   if (data.sharingType !== undefined) row.sharing_type = data.sharingType;
+  if (data.latitude !== undefined) {
+    row.latitude = data.latitude === null || data.latitude === '' ? null : Number(data.latitude);
+  }
+  if (data.longitude !== undefined) {
+    row.longitude = data.longitude === null || data.longitude === '' ? null : Number(data.longitude);
+  }
   return row;
 }
 

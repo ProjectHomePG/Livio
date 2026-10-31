@@ -35,9 +35,37 @@ export function PreferencesProvider({ children }) {
   const [activeNavTab, setActiveNavTab] = useState('stays'); // 'stays' | 'experiences'
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState('all');
-  const [userCoords, setUserCoords] = useState(null);
+  const [selectedLocation, setSelectedLocationState] = useState('all');
+  const [userCoords, setUserCoordsState] = useState(null);
   const [isMapView, setIsMapView] = useState(false);
+
+  const setSelectedLocation = (value) => {
+    setSelectedLocationState((prev) => {
+      const next = typeof value === 'function' ? value(prev) : value;
+      try {
+        localStorage.setItem('livio_selected_location', next || 'all');
+      } catch (e) {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const setUserCoords = (value) => {
+    setUserCoordsState((prev) => {
+      const next = typeof value === 'function' ? value(prev) : value;
+      try {
+        if (next && typeof next.lat === 'number' && typeof next.lng === 'number') {
+          localStorage.setItem('livio_user_coords', JSON.stringify(next));
+        } else {
+          localStorage.removeItem('livio_user_coords');
+        }
+      } catch (e) {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   const [searchParams, setSearchParams] = useState({
     location: '',
@@ -64,6 +92,23 @@ export function PreferencesProvider({ children }) {
         setCurrency(savedCurrency);
       } else {
         setCurrency('INR');
+      }
+
+      const savedLocation = localStorage.getItem('livio_selected_location');
+      if (savedLocation) {
+        setSelectedLocationState(savedLocation);
+      }
+
+      const savedCoords = localStorage.getItem('livio_user_coords');
+      if (savedCoords) {
+        try {
+          const parsed = JSON.parse(savedCoords);
+          if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+            setUserCoordsState(parsed);
+          }
+        } catch (e) {
+          // ignore malformed coords
+        }
       }
     } catch (e) {
       // ignore
