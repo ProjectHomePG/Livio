@@ -15,8 +15,13 @@ import {
   GraduationCap,
   TrainFront,
   Sparkles,
+  Loader2,
+  ArrowRight,
+  Star,
+  Home,
 } from 'lucide-react';
 import { usePreferences } from '@/context/PreferencesContext';
+import { pgService } from '@/services/pgService';
 
 export const LOCATION_CATEGORIES = {
   cities: [
@@ -57,6 +62,7 @@ export default function AirbnbSearchBar() {
     isSearchModalOpen,
     setIsSearchModalOpen,
     setUserCoords,
+    formatPrice,
   } = usePreferences();
 
   const [activeTab, setActiveTab] = useState('where'); // 'where' | 'checkin' | 'checkout' | 'who'
@@ -69,6 +75,11 @@ export default function AirbnbSearchBar() {
   const [genderType, setGenderType] = useState(searchParams?.gender || 'ALL');
   const [guestCount, setGuestCount] = useState(searchParams?.guests || 1);
   const [gpsLoading, setGpsLoading] = useState(false);
+
+  // Auto-suggestion state
+  const [suggestions, setSuggestions] = useState({ pgs: [], locations: [] });
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const debounceTimerRef = useRef(null);
 
   const containerRef = useRef(null);
 
@@ -97,6 +108,69 @@ export default function AirbnbSearchBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isSearchModalOpen, setIsSearchModalOpen]);
 
+  // Debounced Auto-suggestion Fetching
+  useEffect(() => {
+    const q = (location || '').trim();
+    if (!q || q.length < 2 || q === 'Near Me') {
+      setSuggestions({ pgs: [], locations: [] });
+      setIsLoadingSuggestions(false);
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await pgService.getSuggestions(q, 6);
+
+        // Also check static categories for instant local matches
+        const lowerQ = q.toLowerCase();
+        const allLandmarks = [
+          ...LOCATION_CATEGORIES.cities.map((c) => ({ ...c, cat: 'City' })),
+          ...LOCATION_CATEGORIES.techparks.map((t) => ({ ...t, cat: 'Tech Park' })),
+          ...LOCATION_CATEGORIES.colleges.map((c) => ({ ...c, cat: 'College' })),
+          ...LOCATION_CATEGORIES.metro.map((m) => ({ ...m, cat: 'Metro' })),
+        ];
+
+        const matchedLandmarks = allLandmarks.filter(
+          (item) =>
+            item.label.toLowerCase().includes(lowerQ) ||
+            item.city.toLowerCase().includes(lowerQ) ||
+            (item.sub && item.sub.toLowerCase().includes(lowerQ))
+        );
+
+        const mergedLocations = [...(results.locations || [])];
+        matchedLandmarks.forEach((lm) => {
+          const alreadyExists = mergedLocations.some(
+            (l) => (l.label || l.name || '').toLowerCase() === lm.label.toLowerCase()
+          );
+          if (!alreadyExists) {
+            mergedLocations.push({
+              name: lm.city,
+              label: lm.label,
+              sub: lm.sub,
+              type: lm.cat,
+            });
+          }
+        });
+
+        setSuggestions({
+          pgs: results.pgs || [],
+          locations: mergedLocations.slice(0, 5),
+        });
+      } catch (err) {
+        console.warn('Auto-suggestion failed:', err);
+      } finally {
+        setIsLoadingSuggestions(false);
+      }
+    }, 220);
+
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [location]);
+
   const handleUseCurrentLocation = () => {
     if (!('geolocation' in navigator)) {
       alert('Geolocation is not supported by your browser.');
@@ -117,6 +191,21 @@ export default function AirbnbSearchBar() {
       },
       { timeout: 8000 }
     );
+  };
+
+  const handleSelectLocationSuggestion = (locName) => {
+    setLocation(locName);
+    setSuggestions({ pgs: [], locations: [] });
+    setActiveTab('checkin');
+  };
+
+  const handleSelectPGSuggestion = (pg) => {
+    setIsSearchModalOpen(false);
+    if (pg.slug) {
+      router.push(`/pg?slug=${encodeURIComponent(pg.slug)}`);
+    } else {
+      router.push(`/pg?id=${pg.id}`);
+    }
   };
 
   const handleSearch = (e) => {
@@ -144,6 +233,7 @@ export default function AirbnbSearchBar() {
 
   const handleClear = () => {
     setLocation('');
+    setSuggestions({ pgs: [], locations: [] });
     setCheckIn('');
     setCheckOut('');
     setSharingType('ALL');
@@ -155,6 +245,15 @@ export default function AirbnbSearchBar() {
     setActiveTab(tab);
     setIsSearchModalOpen(true);
   };
+
+  const getGenderBadge = (gender) => {
+    const g = (gender || '').toUpperCase();
+    if (g === 'MALE') return { label: 'Boys', color: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800/40' };
+    if (g === 'FEMALE') return { label: 'Girls', color: 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800/40' };
+    return { label: 'Unisex', color: 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 border-purple-200 dark:border-purple-800/40' };
+  };
+
+  const isQueryMode = location.trim().length >= 2 && location.trim() !== 'Near Me';
 
   return (
     <div ref={containerRef} className="relative w-full flex justify-center">
@@ -269,7 +368,7 @@ export default function AirbnbSearchBar() {
                     Where
                   </label>
                   <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
-                    {location || 'Search location'}
+                    {location || 'Search location / PG'}
                   </div>
                 </button>
 
@@ -334,112 +433,273 @@ export default function AirbnbSearchBar() {
               {/* 1. WHERE TAB CONTENT */}
               {activeTab === 'where' && (
                 <div className="space-y-4 sm:space-y-5">
-                  {/* Free-text input */}
-                  <div className="relative flex items-center bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 px-3.5 sm:px-4 py-2.5 sm:py-3">
-                    <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 mr-2.5 sm:mr-3 flex-shrink-0" />
+                  {/* Free-text input with live loading spinner */}
+                  <div className="relative flex items-center bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 px-3.5 sm:px-4 py-2.5 sm:py-3 focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:border-primary-500 transition-all">
+                    {isLoadingSuggestions ? (
+                      <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary-500 animate-spin mr-2.5 sm:mr-3 flex-shrink-0" />
+                    ) : (
+                      <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 mr-2.5 sm:mr-3 flex-shrink-0" />
+                    )}
                     <input
                       type="text"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Type city, locality, tech park, or college..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSearch(e);
+                        }
+                      }}
+                      placeholder="Type PG name, city, locality, tech park, or college..."
                       className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 outline-none"
                       autoFocus
                     />
                     {location && (
                       <button
                         type="button"
-                        onClick={() => setLocation('')}
-                        className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                        onClick={() => {
+                          setLocation('');
+                          setSuggestions({ pgs: [], locations: [] });
+                        }}
+                        className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     )}
                   </div>
 
-                  {/* Quick GPS "Near Me" Option */}
-                  <button
-                    type="button"
-                    onClick={handleUseCurrentLocation}
-                    disabled={gpsLoading}
-                    className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-2xl border border-primary-200 dark:border-primary-900/50 bg-primary-50/50 dark:bg-primary-950/20 hover:bg-primary-50 dark:hover:bg-primary-950/40 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <Navigation className={`w-4 h-4 sm:w-5 sm:h-5 ${gpsLoading ? 'animate-spin' : ''}`} />
+                  {/* DYNAMIC AUTO-SUGGESTIONS VIEW (When typing >= 2 chars) */}
+                  {isQueryMode ? (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      {/* Suggestion status header */}
+                      <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 px-1">
+                        <span>
+                          {isLoadingSuggestions
+                            ? 'Searching verified stays & locations...'
+                            : `Suggestions matching "${location}"`}
+                        </span>
+                        {!isLoadingSuggestions && (suggestions.pgs.length > 0 || suggestions.locations.length > 0) && (
+                          <span className="text-[11px] font-bold text-primary-600 dark:text-primary-400">
+                            {suggestions.pgs.length + suggestions.locations.length} matches
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <div className="text-xs sm:text-sm font-bold text-primary-700 dark:text-primary-300">
-                          {gpsLoading ? 'Detecting your GPS location...' : 'Use my current location (Near Me)'}
-                        </div>
-                        <div className="text-[10px] sm:text-[11px] text-primary-600/70 dark:text-primary-400/70 line-clamp-1 sm:line-clamp-none">
-                          Discover verified PG stays near you right now
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-primary-600 dark:text-primary-400 hidden sm:inline">
-                      Locate &rarr;
-                    </span>
-                  </button>
 
-                  {/* Location Category Tabs */}
-                  <div>
-                    <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 mb-3 text-xs font-bold overflow-x-auto no-scrollbar">
-                      {[
-                        { id: 'cities', label: 'Top Cities' },
-                        { id: 'techparks', label: 'Tech Parks & Hubs' },
-                        { id: 'colleges', label: 'Colleges & Campuses' },
-                        { id: 'metro', label: 'Metro Connected' },
-                      ].map((cat) => (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => setActiveLocCategory(cat.id)}
-                          className={`px-3 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer text-xs ${
-                            activeLocCategory === cat.id
-                              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold'
-                              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
-                          }`}
-                        >
-                          {cat.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Locations Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-2.5">
-                      {(LOCATION_CATEGORIES[activeLocCategory] || LOCATION_CATEGORIES.cities).map((item, idx) => {
-                        const Icon = item.icon;
-                        const isMatch = location.toLowerCase() === item.city.toLowerCase() || location.toLowerCase() === item.label.toLowerCase();
-                        return (
+                      {/* No results fallback */}
+                      {!isLoadingSuggestions && suggestions.pgs.length === 0 && suggestions.locations.length === 0 && (
+                        <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 text-center space-y-3">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 mx-auto flex items-center justify-center text-slate-400">
+                            <Search className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-900 dark:text-white">
+                              No direct match found for &quot;{location}&quot;
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              Try searching by city (e.g. Bengaluru, Pune), area (e.g. Koramangala), or click below to search all available stays.
+                            </div>
+                          </div>
                           <button
-                            key={idx}
                             type="button"
-                            onClick={() => {
-                              setLocation(item.city);
-                              setActiveTab('checkin');
-                            }}
-                            className={`flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer group ${
-                              isMatch
-                                ? 'border-primary-500 bg-primary-50/60 dark:bg-primary-950/30'
-                                : 'border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                            }`}
+                            onClick={handleSearch}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-xs font-bold transition-colors cursor-pointer"
                           >
-                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-primary-500 transition-colors flex-shrink-0">
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
-                                {item.label}
-                              </div>
-                              <div className="text-[10px] text-slate-400 truncate mt-0.5">
-                                {item.sub}
-                              </div>
-                            </div>
+                            <span>Search all stays for &quot;{location}&quot;</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
                           </button>
-                        );
-                      })}
+                        </div>
+                      )}
+
+                      {/* 1. MATCHING LOCATIONS & HUBS */}
+                      {suggestions.locations.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                            Locations & Hubs
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {suggestions.locations.map((loc, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleSelectLocationSuggestion(loc.label || loc.name)}
+                                className="flex items-center gap-3 p-2.5 sm:p-3 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 text-left transition-all cursor-pointer group"
+                              >
+                                <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/40 flex items-center justify-center text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors flex-shrink-0">
+                                  <MapPin className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 truncate">
+                                    {loc.label || loc.name}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                    {loc.sub || (loc.type === 'city' ? 'City' : 'Area / Hub')}
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-slate-400 group-hover:text-primary-500 flex-shrink-0">
+                                  Select &rarr;
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 2. MATCHING PG STAYS (Title, Image, Starting Price) */}
+                      {suggestions.pgs.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                            Verified PG Stays
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            {suggestions.pgs.map((pg) => {
+                              const badge = getGenderBadge(pg.genderType);
+                              const startingPrice = pg.priceTriple || pg.priceDouble || pg.priceSingle || pg.price || 8000;
+                              const primaryImg =
+                                pg.images?.find((img) => img.isPrimary)?.url ||
+                                pg.images?.[0]?.url ||
+                                'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=600&q=80';
+
+                              return (
+                                <div
+                                  key={pg.id}
+                                  onClick={() => handleSelectPGSuggestion(pg)}
+                                  className="flex items-center gap-3 p-2 sm:p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary-500 hover:shadow-md hover:bg-slate-50/80 dark:hover:bg-slate-800/60 transition-all cursor-pointer group"
+                                >
+                                  {/* Thumbnail */}
+                                  <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0">
+                                    <img
+                                      src={primaryImg}
+                                      alt={pg.title}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                      loading="lazy"
+                                    />
+                                  </div>
+
+                                  {/* Info */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                        {pg.title}
+                                      </span>
+                                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${badge.color}`}>
+                                        {badge.label}
+                                      </span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                      {pg.address ? `${pg.address}, ${pg.city}` : pg.city}
+                                    </div>
+                                    <div className="flex items-center justify-between mt-1">
+                                      <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                                        {formatPrice(startingPrice)}
+                                        <span className="text-[9px] font-normal text-slate-400">/mo</span>
+                                      </span>
+                                      {pg.rating && (
+                                        <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
+                                          <Star className="w-2.5 h-2.5 fill-current" />
+                                          {Number(pg.rating).toFixed(1)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="pr-1 text-slate-300 group-hover:text-primary-500 transition-colors">
+                                    <ArrowRight className="w-4 h-4" />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  ) : (
+                    /* DEFAULT CATEGORIES VIEW (When input is empty or < 2 chars) */
+                    <>
+                      {/* Quick GPS "Near Me" Option */}
+                      <button
+                        type="button"
+                        onClick={handleUseCurrentLocation}
+                        disabled={gpsLoading}
+                        className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-2xl border border-primary-200 dark:border-primary-900/50 bg-primary-50/50 dark:bg-primary-950/20 hover:bg-primary-50 dark:hover:bg-primary-950/40 text-left transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <Navigation className={`w-4 h-4 sm:w-5 sm:h-5 ${gpsLoading ? 'animate-spin' : ''}`} />
+                          </div>
+                          <div>
+                            <div className="text-xs sm:text-sm font-bold text-primary-700 dark:text-primary-300">
+                              {gpsLoading ? 'Detecting your GPS location...' : 'Use my current location (Near Me)'}
+                            </div>
+                            <div className="text-[10px] sm:text-[11px] text-primary-600/70 dark:text-primary-400/70 line-clamp-1 sm:line-clamp-none">
+                              Discover verified PG stays near you right now
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold text-primary-600 dark:text-primary-400 hidden sm:inline">
+                          Locate &rarr;
+                        </span>
+                      </button>
+
+                      {/* Location Category Tabs */}
+                      <div>
+                        <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 mb-3 text-xs font-bold overflow-x-auto no-scrollbar">
+                          {[
+                            { id: 'cities', label: 'Top Cities' },
+                            { id: 'techparks', label: 'Tech Parks & Hubs' },
+                            { id: 'colleges', label: 'Colleges & Campuses' },
+                            { id: 'metro', label: 'Metro Connected' },
+                          ].map((cat) => (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => setActiveLocCategory(cat.id)}
+                              className={`px-3 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer text-xs ${
+                                activeLocCategory === cat.id
+                                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold'
+                                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
+                              }`}
+                            >
+                              {cat.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Locations Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-2.5">
+                          {(LOCATION_CATEGORIES[activeLocCategory] || LOCATION_CATEGORIES.cities).map((item, idx) => {
+                            const Icon = item.icon;
+                            const isMatch = location.toLowerCase() === item.city.toLowerCase() || location.toLowerCase() === item.label.toLowerCase();
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setLocation(item.city);
+                                  setActiveTab('checkin');
+                                }}
+                                className={`flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer group ${
+                                  isMatch
+                                    ? 'border-primary-500 bg-primary-50/60 dark:bg-primary-950/30'
+                                    : 'border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                                }`}
+                              >
+                                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-primary-500 transition-colors flex-shrink-0">
+                                  <Icon className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
+                                    {item.label}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                    {item.sub}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
