@@ -177,6 +177,48 @@ export const pgService = {
     return results;
   },
 
+  getSuggestions: async (query, limit = 6) => {
+    const q = (query || '').trim();
+    if (!q || q.length < 2) return { pgs: [], locations: [] };
+    const safe = q.replace(/[,()\\]/g, ' ').trim();
+    if (!safe) return { pgs: [], locations: [] };
+
+    try {
+      const { data, error } = await supabase
+        .from('pgs')
+        .select('id, title, slug, city, state, address, price, price_single, price_double, price_triple, sharing_type, gender_type, rating, images(id,url,is_primary)')
+        .or(`title.ilike.%${safe}%,city.ilike.%${safe}%,state.ilike.%${safe}%,address.ilike.%${safe}%`)
+        .limit(limit);
+
+      if (error) throw new Error(error.message);
+
+      const locMap = new Map();
+      (data || []).forEach((row) => {
+        if (row.city) {
+          const key = row.state ? `${row.city}, ${row.state}` : row.city;
+          if (!locMap.has(key)) {
+            locMap.set(key, { name: row.city, label: key, type: 'city' });
+          }
+        }
+        if (row.address) {
+          const parts = row.address.split(',').map((p) => p.trim()).filter(Boolean);
+          if (parts[0] && !locMap.has(parts[0])) {
+            locMap.set(parts[0], { name: parts[0], label: `${parts[0]}${row.city ? ', ' + row.city : ''}`, type: 'area' });
+          }
+        }
+      });
+
+      return {
+        pgs: mapList(data || []),
+        locations: Array.from(locMap.values()).slice(0, 5),
+      };
+    } catch (err) {
+      console.warn('getSuggestions failed:', err.message);
+      return { pgs: [], locations: [] };
+    }
+  },
+
+
   getBySlug: async (slug) => {
     const { data, error } = await supabase
       .from('pgs')
