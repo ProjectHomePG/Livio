@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -19,6 +20,9 @@ import {
   ArrowRight,
   Star,
   Home,
+  Clock,
+  ChevronRight,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { usePreferences } from '@/context/PreferencesContext';
 import { pgService } from '@/services/pgService';
@@ -65,6 +69,7 @@ export default function AirbnbSearchBar() {
     formatPrice,
   } = usePreferences();
 
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState('where'); // 'where' | 'checkin' | 'checkout' | 'who'
   const [activeLocCategory, setActiveLocCategory] = useState('cities'); // 'cities' | 'techparks' | 'colleges' | 'metro'
 
@@ -83,6 +88,22 @@ export default function AirbnbSearchBar() {
 
   const containerRef = useRef(null);
 
+  // Client mounting check for createPortal SSR safety
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock body scroll when modal is open (essential for mobile/tablet)
+  useEffect(() => {
+    if (isSearchModalOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isSearchModalOpen]);
+
   // Sync initial values from context
   useEffect(() => {
     if (searchParams) {
@@ -95,17 +116,15 @@ export default function AirbnbSearchBar() {
     }
   }, [searchParams]);
 
-  // Close when clicking outside on desktop
+  // Close on Escape key
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape' && isSearchModalOpen) {
         setIsSearchModalOpen(false);
       }
     }
-    if (isSearchModalOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isSearchModalOpen, setIsSearchModalOpen]);
 
   // Debounced Auto-suggestion Fetching
@@ -255,6 +274,652 @@ export default function AirbnbSearchBar() {
 
   const isQueryMode = location.trim().length >= 2 && location.trim() !== 'Near Me';
 
+  // Responsive Modal content rendered via createPortal directly into document.body
+  const modalContent = isSearchModalOpen && mounted ? (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 md:p-6 overflow-y-auto animate-in fade-in duration-200"
+      onClick={() => setIsSearchModalOpen(false)}
+    >
+      <div
+        className="relative w-full h-[100dvh] sm:h-auto sm:max-h-[90dvh] md:max-h-[85vh] sm:max-w-2xl md:max-w-[740px] lg:max-w-[840px] bg-white dark:bg-slate-900 sm:rounded-3xl shadow-2xl border-0 sm:border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden my-auto animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="search-modal-title"
+      >
+        {/* Header - Fixed Top */}
+        <div className="flex items-center justify-between px-4 sm:px-6 pt-3.5 sm:pt-4 pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0 bg-white dark:bg-slate-900">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-primary-500">
+              Search Stays
+            </span>
+            <span className="text-xs text-slate-400 hidden xs:inline">· Livio (PG Near Me)</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsSearchModalOpen(false)}
+            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer flex-shrink-0"
+            aria-label="Close search"
+          >
+            <X className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+          </button>
+        </div>
+
+        {/* Tab Selection: Horizontal Scrollable Pills on Mobile, Clean Grid on Tablet & Desktop */}
+        <div className="px-3 sm:px-4 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700/80 flex-shrink-0">
+          {/* Mobile Tab Strip (< sm) */}
+          <div className="flex sm:hidden items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('where')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                activeTab === 'where'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <MapPin className="w-3 h-3" />
+              <span>{location || 'Where?'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('checkin')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                activeTab === 'checkin'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <Calendar className="w-3 h-3" />
+              <span>{checkIn ? `In: ${checkIn}` : 'Move In'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('checkout')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                activeTab === 'checkout'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <Clock className="w-3 h-3" />
+              <span>{checkOut ? `Stay: ${checkOut}` : 'Duration'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('who')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                activeTab === 'who'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <Users className="w-3 h-3" />
+              <span>{guestCount > 1 ? `${guestCount} Guests` : '1 Guest'}</span>
+            </button>
+          </div>
+
+          {/* Tablet & Desktop Tab Grid (>= sm) */}
+          <div className="hidden sm:grid grid-cols-4 gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('where')}
+              className={`p-2.5 sm:p-3 rounded-2xl text-left border transition-all cursor-pointer ${
+                activeTab === 'where'
+                  ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 shadow-sm ring-2 ring-primary-500/20'
+                  : 'border-transparent hover:bg-white/80 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              <label className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer">
+                Where
+              </label>
+              <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                {location || 'Search location / PG'}
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('checkin')}
+              className={`p-2.5 sm:p-3 rounded-2xl text-left border transition-all cursor-pointer ${
+                activeTab === 'checkin'
+                  ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 shadow-sm ring-2 ring-primary-500/20'
+                  : 'border-transparent hover:bg-white/80 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              <label className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer">
+                Move In
+              </label>
+              <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                {checkIn || 'Add date'}
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('checkout')}
+              className={`p-2.5 sm:p-3 rounded-2xl text-left border transition-all cursor-pointer ${
+                activeTab === 'checkout'
+                  ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 shadow-sm ring-2 ring-primary-500/20'
+                  : 'border-transparent hover:bg-white/80 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              <label className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer">
+                Duration
+              </label>
+              <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                {checkOut || 'Add duration'}
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('who')}
+              className={`p-2.5 sm:p-3 rounded-2xl text-left border transition-all cursor-pointer ${
+                activeTab === 'who'
+                  ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 shadow-sm ring-2 ring-primary-500/20'
+                  : 'border-transparent hover:bg-white/80 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              <label className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer">
+                Who
+              </label>
+              <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                {guestCount > 1 ? `${guestCount} Guests` : '1 Guest'} · {sharingType === 'ALL' ? 'Any' : sharingType}
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Active Content Area - Scrollable Body with overscroll containment */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-3.5 sm:p-6 no-scrollbar">
+          {/* 1. WHERE TAB CONTENT */}
+          {activeTab === 'where' && (
+            <div className="space-y-3.5 sm:space-y-5">
+              {/* Free-text input with live loading spinner */}
+              <div className="relative flex items-center bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 px-3.5 sm:px-4 py-2.5 sm:py-3 focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:border-primary-500 transition-all">
+                {isLoadingSuggestions ? (
+                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary-500 animate-spin mr-2.5 sm:mr-3 flex-shrink-0" />
+                ) : (
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 mr-2.5 sm:mr-3 flex-shrink-0" />
+                )}
+                <input
+                  type="text"
+                  enterKeyHint="search"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearch(e);
+                    }
+                  }}
+                  placeholder="Type PG name, city, locality, tech park, or college..."
+                  className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 outline-none"
+                />
+                {location && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocation('');
+                      setSuggestions({ pgs: [], locations: [] });
+                    }}
+                    className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* DYNAMIC AUTO-SUGGESTIONS VIEW (When typing >= 2 chars) */}
+              {isQueryMode ? (
+                <div className="space-y-3.5 sm:space-y-4 animate-in fade-in duration-150">
+                  {/* Suggestion status header */}
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 px-1">
+                    <span className="truncate pr-2">
+                      {isLoadingSuggestions
+                        ? 'Searching verified stays & locations...'
+                        : `Suggestions for "${location}"`}
+                    </span>
+                    {!isLoadingSuggestions && (suggestions.pgs.length > 0 || suggestions.locations.length > 0) && (
+                      <span className="text-[11px] font-bold text-primary-600 dark:text-primary-400 shrink-0">
+                        {suggestions.pgs.length + suggestions.locations.length} matches
+                      </span>
+                    )}
+                  </div>
+
+                  {/* No results fallback */}
+                  {!isLoadingSuggestions && suggestions.pgs.length === 0 && suggestions.locations.length === 0 && (
+                    <div className="p-5 sm:p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 text-center space-y-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 mx-auto flex items-center justify-center text-slate-400">
+                        <Search className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-900 dark:text-white">
+                          No direct match found for &quot;{location}&quot;
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          Try searching by city (e.g. Bengaluru, Pune), area (e.g. Koramangala), or click below to search all available stays.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSearch}
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-xs font-bold transition-colors cursor-pointer touch-manipulation"
+                      >
+                        <span>Search all stays for &quot;{location}&quot;</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 1. MATCHING LOCATIONS & HUBS */}
+                  {suggestions.locations.length > 0 && (
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                        Locations & Hubs
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                        {suggestions.locations.map((loc, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleSelectLocationSuggestion(loc.label || loc.name)}
+                            className="w-full flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 active:bg-primary-50 dark:active:bg-primary-950/40 text-left transition-all cursor-pointer group touch-manipulation active:scale-[0.99]"
+                          >
+                            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/40 flex items-center justify-center text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors flex-shrink-0">
+                              <MapPin className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 truncate">
+                                {loc.label || loc.name}
+                              </div>
+                              <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                {loc.sub || (loc.type === 'city' ? 'City' : 'Area / Hub')}
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-semibold text-slate-400 group-hover:text-primary-500 flex-shrink-0">
+                              Select &rarr;
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. MATCHING PG STAYS (Title, Image, Starting Price) */}
+                  {suggestions.pgs.length > 0 && (
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                        Verified PG Stays
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
+                        {suggestions.pgs.map((pg) => {
+                          const badge = getGenderBadge(pg.genderType);
+                          const startingPrice = pg.priceTriple || pg.priceDouble || pg.priceSingle || pg.price || 8000;
+                          const primaryImg =
+                            pg.images?.find((img) => img.isPrimary)?.url ||
+                            pg.images?.[0]?.url ||
+                            'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=600&q=80';
+
+                          return (
+                            <button
+                              key={pg.id}
+                              type="button"
+                              onClick={() => handleSelectPGSuggestion(pg)}
+                              className="w-full flex items-center gap-2.5 sm:gap-3 p-2 sm:p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary-500 hover:shadow-md hover:bg-slate-50/80 dark:hover:bg-slate-800/60 active:bg-slate-100 dark:active:bg-slate-800 text-left transition-all cursor-pointer group touch-manipulation active:scale-[0.99]"
+                            >
+                              {/* Thumbnail */}
+                              <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0">
+                                <img
+                                  src={primaryImg}
+                                  alt={pg.title}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  loading="lazy"
+                                />
+                              </div>
+
+                              {/* Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                    {pg.title}
+                                  </span>
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${badge.color}`}>
+                                    {badge.label}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                  {pg.address ? `${pg.address}, ${pg.city}` : pg.city}
+                                </div>
+                                <div className="flex items-center justify-between mt-1">
+                                  <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                                    {formatPrice(startingPrice)}
+                                    <span className="text-[9px] font-normal text-slate-400">/mo</span>
+                                  </span>
+                                  {pg.rating && (
+                                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
+                                      <Star className="w-2.5 h-2.5 fill-current" />
+                                      {Number(pg.rating).toFixed(1)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="pr-1 text-slate-300 group-hover:text-primary-500 transition-colors flex-shrink-0">
+                                <ArrowRight className="w-4 h-4" />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* DEFAULT CATEGORIES VIEW (When input is empty or < 2 chars) */
+                <>
+                  {/* Quick GPS "Near Me" Option */}
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentLocation}
+                    disabled={gpsLoading}
+                    className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-2xl border border-primary-200 dark:border-primary-900/50 bg-primary-50/50 dark:bg-primary-950/20 hover:bg-primary-50 dark:hover:bg-primary-950/40 text-left transition-all cursor-pointer group touch-manipulation active:scale-[0.99]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Navigation className={`w-4 h-4 sm:w-5 sm:h-5 ${gpsLoading ? 'animate-spin' : ''}`} />
+                      </div>
+                      <div>
+                        <div className="text-xs sm:text-sm font-bold text-primary-700 dark:text-primary-300">
+                          {gpsLoading ? 'Detecting your GPS location...' : 'Use my current location (Near Me)'}
+                        </div>
+                        <div className="text-[10px] sm:text-[11px] text-primary-600/70 dark:text-primary-400/70 line-clamp-1">
+                          Discover verified PG stays near you right now
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-primary-600 dark:text-primary-400 hidden xs:inline">
+                      Locate &rarr;
+                    </span>
+                  </button>
+
+                  {/* Location Category Tabs */}
+                  <div>
+                    <div className="flex items-center gap-1.5 sm:gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 mb-3 text-xs font-bold overflow-x-auto no-scrollbar">
+                      {[
+                        { id: 'cities', label: 'Top Cities' },
+                        { id: 'techparks', label: 'Tech Parks & Hubs' },
+                        { id: 'colleges', label: 'Colleges & Campuses' },
+                        { id: 'metro', label: 'Metro Connected' },
+                      ].map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setActiveLocCategory(cat.id)}
+                          className={`px-3 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer text-xs touch-manipulation ${
+                            activeLocCategory === cat.id
+                              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold'
+                              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Locations Grid */}
+                    <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-2.5">
+                      {(LOCATION_CATEGORIES[activeLocCategory] || LOCATION_CATEGORIES.cities).map((item, idx) => {
+                        const Icon = item.icon;
+                        const isMatch = location.toLowerCase() === item.city.toLowerCase() || location.toLowerCase() === item.label.toLowerCase();
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setLocation(item.city);
+                              setActiveTab('checkin');
+                            }}
+                            className={`flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer group touch-manipulation active:scale-[0.99] ${
+                              isMatch
+                                ? 'border-primary-500 bg-primary-50/60 dark:bg-primary-950/30'
+                                : 'border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                            }`}
+                          >
+                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-primary-500 transition-colors flex-shrink-0">
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
+                                {item.label}
+                              </div>
+                              <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                {item.sub}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* 2. CHECK IN TAB CONTENT */}
+          {activeTab === 'checkin' && (
+            <div className="space-y-4 sm:space-y-5 max-w-md mx-auto py-2">
+              <div className="text-center space-y-1">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">When do you want to move in?</h3>
+                <p className="text-xs text-slate-400">Pick an expected date or quick timeframe</p>
+              </div>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={checkIn}
+                  onChange={(e) => {
+                    setCheckIn(e.target.value);
+                  }}
+                  className="w-full p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-primary-500"
+                />
+                {checkIn && (
+                  <button
+                    type="button"
+                    onClick={() => setCheckIn('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-white px-2 py-1"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                {[
+                  { label: 'Immediately', days: 0 },
+                  { label: 'This Weekend', days: 3 },
+                  { label: '1st of Month', days: 15 },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + item.days);
+                      setCheckIn(d.toISOString().split('T')[0]);
+                    }}
+                    className="p-2.5 sm:p-3 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-slate-900 dark:hover:border-white text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors touch-manipulation active:scale-[0.98]"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 3. CHECK OUT / DURATION TAB CONTENT */}
+          {activeTab === 'checkout' && (
+            <div className="space-y-4 sm:space-y-5 max-w-md mx-auto py-2">
+              <div className="text-center space-y-1">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">How long do you plan to stay?</h3>
+                <p className="text-xs text-slate-400">Flexible agreements or fixed term coliving</p>
+              </div>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={checkOut}
+                  onChange={(e) => {
+                    setCheckOut(e.target.value);
+                  }}
+                  className="w-full p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-primary-500"
+                />
+                {checkOut && (
+                  <button
+                    type="button"
+                    onClick={() => setCheckOut('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-white px-2 py-1"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                {[
+                  { label: '1-3 Months', months: 2 },
+                  { label: '6 Months', months: 6 },
+                  { label: 'Long Stay (1 Yr+)', months: 12 },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() + item.months);
+                      setCheckOut(d.toISOString().split('T')[0]);
+                    }}
+                    className="p-2.5 sm:p-3 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-slate-900 dark:hover:border-white text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors touch-manipulation active:scale-[0.98]"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 4. WHO TAB CONTENT */}
+          {activeTab === 'who' && (
+            <div className="space-y-4 sm:space-y-6 max-w-lg mx-auto py-2">
+              {/* Guest count */}
+              <div className="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
+                <div>
+                  <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Occupants</div>
+                  <div className="text-[11px] sm:text-xs text-slate-400">Number of people moving in</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={guestCount <= 1}
+                    onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
+                    className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:border-slate-800 touch-manipulation"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-5 text-center text-sm font-bold text-slate-900 dark:text-white">
+                    {guestCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setGuestCount(guestCount + 1)}
+                    className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-slate-800 touch-manipulation"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Sharing Type */}
+              <div>
+                <label className="block text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-2">
+                  Room Configuration
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
+                  {[
+                    { id: 'ALL', label: 'Any Room' },
+                    { id: 'SINGLE', label: 'Private Room' },
+                    { id: 'DOUBLE', label: '2 Sharing' },
+                    { id: 'TRIPLE', label: '3+ Sharing' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSharingType(item.id)}
+                      className={`p-2.5 sm:p-3 rounded-2xl border text-center text-[11px] sm:text-xs font-bold transition-all cursor-pointer touch-manipulation ${
+                        sharingType === item.id
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-300 ring-2 ring-primary-500/20'
+                          : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Gender Policy */}
+              <div>
+                <label className="block text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-2">
+                  Resident Gender Policy
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
+                  {[
+                    { id: 'ALL', label: 'All Stays' },
+                    { id: 'MALE', label: 'Boys Only' },
+                    { id: 'FEMALE', label: 'Girls Only' },
+                    { id: 'UNISEX', label: 'Coliving / Unisex' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setGenderType(item.id)}
+                      className={`p-2.5 sm:p-3 rounded-2xl border text-center text-[11px] sm:text-xs font-bold transition-all cursor-pointer touch-manipulation ${
+                        genderType === item.id
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-300 ring-2 ring-primary-500/20'
+                          : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Actions - Fixed Bottom */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleClear}
+            className="text-xs font-bold text-slate-700 dark:text-slate-300 underline hover:text-black dark:hover:text-white cursor-pointer touch-manipulation py-2"
+          >
+            Clear all
+          </button>
+          <button
+            type="button"
+            onClick={handleSearch}
+            className="flex items-center gap-2 px-5 sm:px-7 py-2.5 sm:py-3 rounded-full bg-gradient-to-r from-primary-500 to-rose-600 hover:from-primary-600 hover:to-rose-700 text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer touch-manipulation"
+          >
+            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+            <span>Search Stays</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div ref={containerRef} className="relative w-full flex justify-center">
       {/* 1. Desktop Search Pill: Isolated Interactive Segments */}
@@ -307,7 +972,7 @@ export default function AirbnbSearchBar() {
       <button
         type="button"
         onClick={() => openTab('where')}
-        className="flex md:hidden items-center gap-2 sm:gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full py-1.5 sm:py-2 px-2.5 sm:px-3.5 shadow-xs hover:shadow-md transition-shadow cursor-pointer w-full max-w-full text-left"
+        className="flex md:hidden items-center gap-2 sm:gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full py-1.5 sm:py-2 px-2.5 sm:px-3.5 shadow-xs hover:shadow-md transition-shadow cursor-pointer w-full max-w-full text-left touch-manipulation active:scale-[0.99]"
       >
         <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-primary-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
           <Search className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5]" />
@@ -323,595 +988,8 @@ export default function AirbnbSearchBar() {
         </div>
       </button>
 
-      {/* 2. Interactive Search Overlay / Popover Modal */}
-      {isSearchModalOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={() => setIsSearchModalOpen(false)}
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 transition-opacity animate-in fade-in duration-200"
-          />
-
-          {/* Modal Container */}
-          <div className="fixed inset-x-2 top-2 bottom-3 sm:bottom-auto md:absolute md:top-full md:left-1/2 md:-translate-x-1/2 md:inset-x-auto md:w-[860px] max-h-[95vh] md:max-h-[85vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-            {/* Header / Tabs */}
-            <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-5 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-primary-500">
-                  Search Stays
-                </span>
-                <span className="text-xs text-slate-400 hidden xs:inline">· Livio (PG Near Me)</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSearchModalOpen(false)}
-                className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Segment Controls: Isolated & Clean Transitions */}
-            <div className="p-2 sm:p-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700/80">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 sm:gap-2">
-                {/* Where Tab */}
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('where')}
-                  className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left border transition-all duration-150 cursor-pointer ${
-                    activeTab === 'where'
-                      ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 shadow-sm ring-2 ring-primary-500/20'
-                      : 'border-transparent hover:bg-white/80 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  <label className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Where
-                  </label>
-                  <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
-                    {location || 'Search location / PG'}
-                  </div>
-                </button>
-
-                {/* Check In Tab */}
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('checkin')}
-                  className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left border transition-all duration-150 cursor-pointer ${
-                    activeTab === 'checkin'
-                      ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 shadow-sm ring-2 ring-primary-500/20'
-                      : 'border-transparent hover:bg-white/80 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  <label className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Move In
-                  </label>
-                  <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
-                    {checkIn || 'Add date'}
-                  </div>
-                </button>
-
-                {/* Duration Tab */}
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('checkout')}
-                  className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left border transition-all duration-150 cursor-pointer ${
-                    activeTab === 'checkout'
-                      ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 shadow-sm ring-2 ring-primary-500/20'
-                      : 'border-transparent hover:bg-white/80 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  <label className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Duration
-                  </label>
-                  <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
-                    {checkOut || 'Add duration'}
-                  </div>
-                </button>
-
-                {/* Who Tab */}
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('who')}
-                  className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left border transition-all duration-150 cursor-pointer ${
-                    activeTab === 'who'
-                      ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 shadow-sm ring-2 ring-primary-500/20'
-                      : 'border-transparent hover:bg-white/80 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  <label className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Who
-                  </label>
-                  <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
-                    {guestCount > 1 ? `${guestCount} Guests` : '1 Guest'} · {sharingType === 'ALL' ? 'Any' : sharingType}
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Active Content Area */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 no-scrollbar">
-              {/* 1. WHERE TAB CONTENT */}
-              {activeTab === 'where' && (
-                <div className="space-y-4 sm:space-y-5">
-                  {/* Free-text input with live loading spinner */}
-                  <div className="relative flex items-center bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 px-3.5 sm:px-4 py-2.5 sm:py-3 focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:border-primary-500 transition-all">
-                    {isLoadingSuggestions ? (
-                      <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary-500 animate-spin mr-2.5 sm:mr-3 flex-shrink-0" />
-                    ) : (
-                      <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 mr-2.5 sm:mr-3 flex-shrink-0" />
-                    )}
-                    <input
-                      type="text"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleSearch(e);
-                        }
-                      }}
-                      placeholder="Type PG name, city, locality, tech park, or college..."
-                      className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 outline-none"
-                      autoFocus
-                    />
-                    {location && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLocation('');
-                          setSuggestions({ pgs: [], locations: [] });
-                        }}
-                        className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* DYNAMIC AUTO-SUGGESTIONS VIEW (When typing >= 2 chars) */}
-                  {isQueryMode ? (
-                    <div className="space-y-4 animate-in fade-in duration-150">
-                      {/* Suggestion status header */}
-                      <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 px-1">
-                        <span>
-                          {isLoadingSuggestions
-                            ? 'Searching verified stays & locations...'
-                            : `Suggestions matching "${location}"`}
-                        </span>
-                        {!isLoadingSuggestions && (suggestions.pgs.length > 0 || suggestions.locations.length > 0) && (
-                          <span className="text-[11px] font-bold text-primary-600 dark:text-primary-400">
-                            {suggestions.pgs.length + suggestions.locations.length} matches
-                          </span>
-                        )}
-                      </div>
-
-                      {/* No results fallback */}
-                      {!isLoadingSuggestions && suggestions.pgs.length === 0 && suggestions.locations.length === 0 && (
-                        <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 text-center space-y-3">
-                          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 mx-auto flex items-center justify-center text-slate-400">
-                            <Search className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold text-slate-900 dark:text-white">
-                              No direct match found for &quot;{location}&quot;
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                              Try searching by city (e.g. Bengaluru, Pune), area (e.g. Koramangala), or click below to search all available stays.
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleSearch}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-xs font-bold transition-colors cursor-pointer"
-                          >
-                            <span>Search all stays for &quot;{location}&quot;</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-
-                      {/* 1. MATCHING LOCATIONS & HUBS */}
-                      {suggestions.locations.length > 0 && (
-                        <div className="space-y-2">
-                          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
-                            Locations & Hubs
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {suggestions.locations.map((loc, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => handleSelectLocationSuggestion(loc.label || loc.name)}
-                                className="flex items-center gap-3 p-2.5 sm:p-3 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 text-left transition-all cursor-pointer group"
-                              >
-                                <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/40 flex items-center justify-center text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors flex-shrink-0">
-                                  <MapPin className="w-4 h-4" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 truncate">
-                                    {loc.label || loc.name}
-                                  </div>
-                                  <div className="text-[10px] text-slate-400 truncate mt-0.5">
-                                    {loc.sub || (loc.type === 'city' ? 'City' : 'Area / Hub')}
-                                  </div>
-                                </div>
-                                <span className="text-[10px] font-semibold text-slate-400 group-hover:text-primary-500 flex-shrink-0">
-                                  Select &rarr;
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 2. MATCHING PG STAYS (Title, Image, Starting Price) */}
-                      {suggestions.pgs.length > 0 && (
-                        <div className="space-y-2">
-                          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
-                            Verified PG Stays
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                            {suggestions.pgs.map((pg) => {
-                              const badge = getGenderBadge(pg.genderType);
-                              const startingPrice = pg.priceTriple || pg.priceDouble || pg.priceSingle || pg.price || 8000;
-                              const primaryImg =
-                                pg.images?.find((img) => img.isPrimary)?.url ||
-                                pg.images?.[0]?.url ||
-                                'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=600&q=80';
-
-                              return (
-                                <div
-                                  key={pg.id}
-                                  onClick={() => handleSelectPGSuggestion(pg)}
-                                  className="flex items-center gap-3 p-2 sm:p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary-500 hover:shadow-md hover:bg-slate-50/80 dark:hover:bg-slate-800/60 transition-all cursor-pointer group"
-                                >
-                                  {/* Thumbnail */}
-                                  <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0">
-                                    <img
-                                      src={primaryImg}
-                                      alt={pg.title}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                      loading="lazy"
-                                    />
-                                  </div>
-
-                                  {/* Info */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                                        {pg.title}
-                                      </span>
-                                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${badge.color}`}>
-                                        {badge.label}
-                                      </span>
-                                    </div>
-                                    <div className="text-[10px] text-slate-400 truncate mt-0.5">
-                                      {pg.address ? `${pg.address}, ${pg.city}` : pg.city}
-                                    </div>
-                                    <div className="flex items-center justify-between mt-1">
-                                      <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                                        {formatPrice(startingPrice)}
-                                        <span className="text-[9px] font-normal text-slate-400">/mo</span>
-                                      </span>
-                                      {pg.rating && (
-                                        <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
-                                          <Star className="w-2.5 h-2.5 fill-current" />
-                                          {Number(pg.rating).toFixed(1)}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <div className="pr-1 text-slate-300 group-hover:text-primary-500 transition-colors">
-                                    <ArrowRight className="w-4 h-4" />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    /* DEFAULT CATEGORIES VIEW (When input is empty or < 2 chars) */
-                    <>
-                      {/* Quick GPS "Near Me" Option */}
-                      <button
-                        type="button"
-                        onClick={handleUseCurrentLocation}
-                        disabled={gpsLoading}
-                        className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-2xl border border-primary-200 dark:border-primary-900/50 bg-primary-50/50 dark:bg-primary-950/20 hover:bg-primary-50 dark:hover:bg-primary-950/40 text-left transition-all cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                            <Navigation className={`w-4 h-4 sm:w-5 sm:h-5 ${gpsLoading ? 'animate-spin' : ''}`} />
-                          </div>
-                          <div>
-                            <div className="text-xs sm:text-sm font-bold text-primary-700 dark:text-primary-300">
-                              {gpsLoading ? 'Detecting your GPS location...' : 'Use my current location (Near Me)'}
-                            </div>
-                            <div className="text-[10px] sm:text-[11px] text-primary-600/70 dark:text-primary-400/70 line-clamp-1 sm:line-clamp-none">
-                              Discover verified PG stays near you right now
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold text-primary-600 dark:text-primary-400 hidden sm:inline">
-                          Locate &rarr;
-                        </span>
-                      </button>
-
-                      {/* Location Category Tabs */}
-                      <div>
-                        <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 mb-3 text-xs font-bold overflow-x-auto no-scrollbar">
-                          {[
-                            { id: 'cities', label: 'Top Cities' },
-                            { id: 'techparks', label: 'Tech Parks & Hubs' },
-                            { id: 'colleges', label: 'Colleges & Campuses' },
-                            { id: 'metro', label: 'Metro Connected' },
-                          ].map((cat) => (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => setActiveLocCategory(cat.id)}
-                              className={`px-3 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer text-xs ${
-                                activeLocCategory === cat.id
-                                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold'
-                                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
-                              }`}
-                            >
-                              {cat.label}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Locations Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-2.5">
-                          {(LOCATION_CATEGORIES[activeLocCategory] || LOCATION_CATEGORIES.cities).map((item, idx) => {
-                            const Icon = item.icon;
-                            const isMatch = location.toLowerCase() === item.city.toLowerCase() || location.toLowerCase() === item.label.toLowerCase();
-                            return (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => {
-                                  setLocation(item.city);
-                                  setActiveTab('checkin');
-                                }}
-                                className={`flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer group ${
-                                  isMatch
-                                    ? 'border-primary-500 bg-primary-50/60 dark:bg-primary-950/30'
-                                    : 'border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                                }`}
-                              >
-                                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-primary-500 transition-colors flex-shrink-0">
-                                  <Icon className="w-4 h-4" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
-                                    {item.label}
-                                  </div>
-                                  <div className="text-[10px] text-slate-400 truncate mt-0.5">
-                                    {item.sub}
-                                  </div>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* 2. CHECK IN TAB CONTENT */}
-              {activeTab === 'checkin' && (
-                <div className="space-y-4 sm:space-y-5 max-w-md mx-auto">
-                  <div className="text-center space-y-1">
-                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">When do you want to move in?</h3>
-                    <p className="text-xs text-slate-400">Pick an expected date or quick timeframe</p>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      value={checkIn}
-                      onChange={(e) => {
-                        setCheckIn(e.target.value);
-                      }}
-                      className="w-full p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-primary-500"
-                    />
-                    {checkIn && (
-                      <button
-                        type="button"
-                        onClick={() => setCheckIn('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-white px-2 py-1"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                    {[
-                      { label: 'Immediately', days: 0 },
-                      { label: 'This Weekend', days: 3 },
-                      { label: '1st of Month', days: 15 },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        onClick={() => {
-                          const d = new Date();
-                          d.setDate(d.getDate() + item.days);
-                          setCheckIn(d.toISOString().split('T')[0]);
-                        }}
-                        className="p-2.5 sm:p-3 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-slate-900 dark:hover:border-white text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 3. CHECK OUT / DURATION TAB CONTENT */}
-              {activeTab === 'checkout' && (
-                <div className="space-y-4 sm:space-y-5 max-w-md mx-auto">
-                  <div className="text-center space-y-1">
-                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">How long do you plan to stay?</h3>
-                    <p className="text-xs text-slate-400">Flexible agreements or fixed term coliving</p>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      value={checkOut}
-                      onChange={(e) => {
-                        setCheckOut(e.target.value);
-                      }}
-                      className="w-full p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-primary-500"
-                    />
-                    {checkOut && (
-                      <button
-                        type="button"
-                        onClick={() => setCheckOut('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-white px-2 py-1"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                    {[
-                      { label: '1-3 Months', months: 2 },
-                      { label: '6 Months', months: 6 },
-                      { label: 'Long Stay (1 Yr+)', months: 12 },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        onClick={() => {
-                          const d = new Date();
-                          d.setMonth(d.getMonth() + item.months);
-                          setCheckOut(d.toISOString().split('T')[0]);
-                        }}
-                        className="p-2.5 sm:p-3 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-slate-900 dark:hover:border-white text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 4. WHO TAB CONTENT */}
-              {activeTab === 'who' && (
-                <div className="space-y-5 sm:space-y-6 max-w-lg mx-auto">
-                  {/* Guest count */}
-                  <div className="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
-                    <div>
-                      <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Occupants</div>
-                      <div className="text-[11px] sm:text-xs text-slate-400">Number of people moving in</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        disabled={guestCount <= 1}
-                        onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
-                        className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:border-slate-800"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-5 text-center text-sm font-bold text-slate-900 dark:text-white">
-                        {guestCount}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setGuestCount(guestCount + 1)}
-                        className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-slate-800"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Sharing Type */}
-                  <div>
-                    <label className="block text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-2">
-                      Room Configuration
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
-                      {[
-                        { id: 'ALL', label: 'Any Room' },
-                        { id: 'SINGLE', label: 'Private Room' },
-                        { id: 'DOUBLE', label: '2 Sharing' },
-                        { id: 'TRIPLE', label: '3+ Sharing' },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setSharingType(item.id)}
-                          className={`p-2.5 sm:p-3 rounded-2xl border text-center text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
-                            sharingType === item.id
-                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-300 ring-2 ring-primary-500/20'
-                              : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400'
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Gender Policy */}
-                  <div>
-                    <label className="block text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-2">
-                      Resident Gender Policy
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
-                      {[
-                        { id: 'ALL', label: 'All Stays' },
-                        { id: 'MALE', label: 'Boys Only' },
-                        { id: 'FEMALE', label: 'Girls Only' },
-                        { id: 'UNISEX', label: 'Coliving / Unisex' },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setGenderType(item.id)}
-                          className={`p-2.5 sm:p-3 rounded-2xl border text-center text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
-                            genderType === item.id
-                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-300 ring-2 ring-primary-500/20'
-                              : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400'
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <button
-                type="button"
-                onClick={handleClear}
-                className="text-xs font-bold text-slate-700 dark:text-slate-300 underline hover:text-black dark:hover:text-white cursor-pointer"
-              >
-                Clear all
-              </button>
-              <button
-                type="button"
-                onClick={handleSearch}
-                className="flex items-center gap-2 px-5 sm:px-7 py-2.5 sm:py-3 rounded-full bg-gradient-to-r from-primary-500 to-rose-600 hover:from-primary-600 hover:to-rose-700 text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-              >
-                <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-                <span>Search Stays</span>
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Portal Search Modal */}
+      {mounted && typeof document !== 'undefined' && modalContent && createPortal(modalContent, document.body)}
     </div>
   );
 }
