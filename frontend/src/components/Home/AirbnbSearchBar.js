@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -83,6 +84,7 @@ export default function AirbnbSearchBar() {
   const debounceTimerRef = useRef(null);
 
   const containerRef = useRef(null);
+  const modalRef = useRef(null);
 
   // Sync initial values from context
   useEffect(() => {
@@ -96,10 +98,12 @@ export default function AirbnbSearchBar() {
     }
   }, [searchParams]);
 
-  // Close when clicking outside on desktop
+  // Close when clicking outside the pill or the (portaled) modal
   useEffect(() => {
     function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      const inPill = containerRef.current && containerRef.current.contains(event.target);
+      const inModal = modalRef.current && modalRef.current.contains(event.target);
+      if (!inPill && !inModal) {
         setIsSearchModalOpen(false);
       }
     }
@@ -108,6 +112,28 @@ export default function AirbnbSearchBar() {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isSearchModalOpen, setIsSearchModalOpen]);
+
+  // Close on Escape key
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') setIsSearchModalOpen(false);
+    }
+    if (isSearchModalOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isSearchModalOpen, setIsSearchModalOpen]);
+
+  // Lock body scroll while the overlay is open
+  useEffect(() => {
+    if (isSearchModalOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isSearchModalOpen]);
 
   // Debounced Auto-suggestion Fetching
   useEffect(() => {
@@ -205,6 +231,7 @@ export default function AirbnbSearchBar() {
     if (e) e.preventDefault();
     const params = new URLSearchParams();
     if (location.trim() && location !== 'Near Me') params.set('query', location.trim());
+    if (location === 'Near Me') params.set('nearme', '1');
     if (sharingType !== 'ALL') params.set('sharing', sharingType);
     if (genderType !== 'ALL') params.set('gender', genderType);
     if (checkIn) params.set('checkIn', checkIn);
@@ -288,8 +315,9 @@ export default function AirbnbSearchBar() {
         {/* Search Icon CTA */}
         <button
           type="button"
-          onClick={handleSearch}
+          onClick={() => (location.trim() ? handleSearch() : openTab('where'))}
           title="Search verified stays"
+          aria-label={location.trim() ? 'Search stays' : 'Open search'}
           className="ml-1 w-8 h-8 rounded-full bg-primary-500 hover:bg-primary-600 text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer flex-shrink-0"
         >
           <Search className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -300,6 +328,7 @@ export default function AirbnbSearchBar() {
       <button
         type="button"
         onClick={() => openTab('where')}
+        aria-label="Open search"
         className="flex md:hidden items-center gap-2 sm:gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full py-1.5 sm:py-2 px-2.5 sm:px-3.5 shadow-xs hover:shadow-md transition-shadow cursor-pointer w-full max-w-full text-left"
       >
         <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-primary-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
@@ -317,23 +346,30 @@ export default function AirbnbSearchBar() {
       </button>
 
       {/* 2. Interactive Search Overlay / Popover Modal */}
-      {isSearchModalOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={() => setIsSearchModalOpen(false)}
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 transition-opacity animate-in fade-in duration-200"
-          />
+      {isSearchModalOpen &&
+        createPortal(
+          <>
+            {/* Backdrop */}
+            <div
+              onClick={() => setIsSearchModalOpen(false)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[90] transition-opacity animate-in fade-in duration-200"
+            />
 
-          {/* Modal Container */}
-          <div className="fixed inset-x-2 top-2 bottom-3 sm:bottom-auto md:absolute md:top-full md:left-1/2 md:-translate-x-1/2 md:inset-x-auto md:w-[860px] max-h-[95vh] md:max-h-[85vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Modal Container */}
+            <div
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Search stays"
+              className="fixed left-2 right-2 top-2 bottom-3 sm:bottom-auto md:top-24 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[860px] max-w-[calc(100vw-1rem)] max-h-[95vh] md:max-h-[85vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl z-[95] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+            >
             {/* Header / Tabs */}
-            <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-5 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-5 pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-extrabold uppercase tracking-wider text-primary-500">
                   Search Stays
                 </span>
-                <span className="text-xs text-slate-400 hidden xs:inline">· Livio (PG Near Me)</span>
+                <span className="text-xs text-slate-400 hidden sm:inline">· Livio (PG Near Me)</span>
               </div>
               <button
                 type="button"
@@ -345,7 +381,7 @@ export default function AirbnbSearchBar() {
             </div>
 
             {/* Segment Controls: Isolated & Clean Transitions */}
-            <div className="p-2 sm:p-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700/80">
+            <div className="p-2 sm:p-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700/80 flex-shrink-0">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 sm:gap-2">
                 {/* Where Tab */}
                 <button
@@ -885,7 +921,7 @@ export default function AirbnbSearchBar() {
             </div>
 
             {/* Bottom Actions */}
-            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0">
               <button
                 type="button"
                 onClick={handleClear}
@@ -902,9 +938,10 @@ export default function AirbnbSearchBar() {
                 <span>Search Stays</span>
               </button>
             </div>
-          </div>
-        </>
-      )}
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   );
 }

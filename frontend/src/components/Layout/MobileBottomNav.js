@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Search, Heart, User } from 'lucide-react';
 import authService from '@/services/authService';
+import { usePreferences } from '@/context/PreferencesContext';
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const [user, setUser] = useState(null);
+  const { setIsSearchModalOpen } = usePreferences();
 
   useEffect(() => {
     setUser(authService.getCurrentUser());
@@ -21,6 +23,14 @@ export default function MobileBottomNav() {
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-2.5 flex items-center justify-around shadow-lg">
       <Link
         href="/"
+        onClick={(e) => {
+          // Already on home — open the search overlay instead of a dead link
+          if (pathname === '/') {
+            e.preventDefault();
+            setIsSearchModalOpen(true);
+          }
+        }}
+        aria-label="Search stays"
         className={`flex flex-col items-center gap-1 text-[11px] font-semibold transition-colors ${
           pathname === '/' || pathname === '/search'
             ? 'text-primary-500 font-bold'

@@ -27,6 +27,7 @@ export default function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryParam = searchParams.get('query') || '';
+  const nearMeParam = searchParams.get('nearme') === '1';
   const sharingParam = searchParams.get('sharing') || 'ALL';
   const genderParam = searchParams.get('gender') || 'ALL';
   const minPriceParam = searchParams.get('minPrice') || '';
@@ -69,10 +70,12 @@ export default function SearchPage() {
       minPrice: minPriceParam,
       maxPrice: maxPriceParam,
     });
-    if (queryParam) {
+    if (nearMeParam) {
+      setIsNearMeMode(true);
+    } else if (queryParam) {
       setIsNearMeMode(false);
     }
-  }, [queryParam, sharingParam, genderParam, minPriceParam, maxPriceParam]);
+  }, [queryParam, nearMeParam, sharingParam, genderParam, minPriceParam, maxPriceParam]);
 
   const performSearch = useCallback(async (currentFilters) => {
     setLoading(true);
