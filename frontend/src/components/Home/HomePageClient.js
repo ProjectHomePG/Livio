@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import pgService from '../../services/pgService';
 import CategoryBar from './CategoryBar';
 import LocationOptionsBar from './LocationOptionsBar';
-import IconsHero from './IconsHero';
 import PGGrid from '../Search/PGGrid';
 import FilterModal from './FilterModal';
 import MapView from '../Search/MapView';
@@ -250,11 +249,6 @@ export default function HomePage() {
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-        )}
-
-        {/* Summer 2024 Airbnb Icons Showcase */}
-        {(selectedCategory === 'all' || selectedCategory === 'icons' || activeNavTab === 'experiences') && selectedLocation === 'all' && (
-          <IconsHero />
         )}
 
         {/* Content View: Clean Grid or Interactive Map */}
