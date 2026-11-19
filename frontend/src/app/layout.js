@@ -6,6 +6,7 @@ import MobileBottomNav from "../components/Layout/MobileBottomNav";
 import { ThemeProvider } from "../context/ThemeContext";
 import { PreferencesProvider } from "../context/PreferencesContext";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -87,6 +88,7 @@ export default function RootLayout({ children }) {
           </PreferencesProvider>
         </ThemeProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
