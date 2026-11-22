@@ -21,10 +21,10 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:8082";
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Livio - PG Near Me | Verified PG, Rooms & Co-Living",
+    default: "PG Near Me",
     template: "%s | Livio - PG Near Me",
   },
-  description: "Livio (PG Near Me) - Discover premium, verified Paying Guest accommodations and co-living stays near tech parks, colleges, metro stations, and corporate hubs across India.",
+  description: "Livio PG Near Me - Discover premium, verified Paying Guest accommodations and co-living stays near tech parks, colleges, metro stations, and corporate hubs across India.",
   keywords: ["Livio", "PG Near Me", "Paying Guest", "Co-living", "Hostel", "Student Accommodation", "Rooms for rent"],
   authors: [{ name: "Livio" }],
   openGraph: {
