@@ -23,7 +23,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:8082";
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Livio - PG Near Me | Verified PG, Rooms & Co-Living",
+    default: "PG Near Me",
     template: "%s | Livio - PG Near Me",
   },
   description:
