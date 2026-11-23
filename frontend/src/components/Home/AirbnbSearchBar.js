@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { usePreferences } from '@/context/PreferencesContext';
 import { pgService } from '@/services/pgService';
+import { getCurrentCoords } from '@/utils/geolocation';
 
 export const LOCATION_CATEGORIES = {
   cities: [
@@ -87,6 +88,7 @@ export default function AirbnbSearchBar() {
   const debounceTimerRef = useRef(null);
 
   const containerRef = useRef(null);
+  const modalRef = useRef(null);
 
   // Client mounting check for createPortal SSR safety
   useEffect(() => {
@@ -190,26 +192,18 @@ export default function AirbnbSearchBar() {
     };
   }, [location]);
 
-  const handleUseCurrentLocation = () => {
-    if (!('geolocation' in navigator)) {
-      alert('Geolocation is not supported by your browser.');
-      return;
-    }
+  const handleUseCurrentLocation = async () => {
     setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGpsLoading(false);
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserCoords(coords);
-        setLocation('Near Me');
-        setActiveTab('checkin');
-      },
-      () => {
-        setGpsLoading(false);
-        alert('Could not access your location. Please type your city instead.');
-      },
-      { timeout: 8000 }
-    );
+    try {
+      const coords = await getCurrentCoords({ timeout: 8000 });
+      setUserCoords(coords);
+      setLocation('Near Me');
+      setActiveTab('checkin');
+    } catch (err) {
+      alert(err?.message || 'Could not access your location. Please type your city instead.');
+    } finally {
+      setGpsLoading(false);
+    }
   };
 
   const handleSelectLocationSuggestion = (locName) => {
@@ -231,6 +225,7 @@ export default function AirbnbSearchBar() {
     if (e) e.preventDefault();
     const params = new URLSearchParams();
     if (location.trim() && location !== 'Near Me') params.set('query', location.trim());
+    if (location === 'Near Me') params.set('nearme', '1');
     if (sharingType !== 'ALL') params.set('sharing', sharingType);
     if (genderType !== 'ALL') params.set('gender', genderType);
     if (checkIn) params.set('checkIn', checkIn);
@@ -960,8 +955,9 @@ export default function AirbnbSearchBar() {
         {/* Search Icon CTA */}
         <button
           type="button"
-          onClick={handleSearch}
+          onClick={() => (location.trim() ? handleSearch() : openTab('where'))}
           title="Search verified stays"
+          aria-label={location.trim() ? 'Search stays' : 'Open search'}
           className="ml-1 w-8 h-8 rounded-full bg-primary-500 hover:bg-primary-600 text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer flex-shrink-0"
         >
           <Search className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -972,6 +968,7 @@ export default function AirbnbSearchBar() {
       <button
         type="button"
         onClick={() => openTab('where')}
+        aria-label="Open search"
         className="flex md:hidden items-center gap-2 sm:gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full py-1.5 sm:py-2 px-2.5 sm:px-3.5 shadow-xs hover:shadow-md transition-shadow cursor-pointer w-full max-w-full text-left touch-manipulation active:scale-[0.99]"
       >
         <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-primary-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">

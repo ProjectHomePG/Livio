@@ -5,6 +5,8 @@ import Footer from "../components/Layout/Footer";
 import MobileBottomNav from "../components/Layout/MobileBottomNav";
 import { ThemeProvider } from "../context/ThemeContext";
 import { PreferencesProvider } from "../context/PreferencesContext";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -24,12 +26,29 @@ export const metadata = {
     default: "PG Near Me",
     template: "%s | Livio - PG Near Me",
   },
-  description: "Livio PG Near Me - Discover premium, verified Paying Guest accommodations and co-living stays near tech parks, colleges, metro stations, and corporate hubs across India.",
-  keywords: ["Livio", "PG Near Me", "Paying Guest", "Co-living", "Hostel", "Student Accommodation", "Rooms for rent"],
+  description:
+    "Livio (PG Near Me) - Find verified paying guest for boys & girls, student PG, coliving PG, hostel and rooms near tech parks, colleges, metro stations and corporate hubs across India.",
+  keywords: [
+    "PG Near Me",
+    "PG near",
+    "PG for boys",
+    "PG for girls",
+    "colive PG",
+    "coliving PG",
+    "hostel",
+    "paying guest",
+    "student PG",
+    "PG in",
+    "paying guest for boys",
+    "paying guest for girls",
+    "boys and girls hostel",
+    "Livio",
+  ],
   authors: [{ name: "Livio" }],
   openGraph: {
     title: "Livio - PG Near Me | Verified PG, Rooms & Co-Living",
-    description: "Livio - Discover verified paying guest (PG) rooms and co-living spaces near you.",
+    description:
+      "Find a PG near me - verified paying guest for boys & girls, student PG, coliving PG and hostel stays near colleges and tech parks.",
     url: siteUrl,
     siteName: "Livio - PG Near Me",
     locale: "en_IN",
@@ -38,7 +57,8 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Livio - PG Near Me | Verified PG, Rooms & Co-Living",
-    description: "Livio - Discover verified paying guest (PG) rooms and co-living spaces near you.",
+    description:
+      "Find a PG near me - verified paying guest for boys & girls, student PG, coliving PG and hostel stays near colleges and tech parks.",
   },
 };
 
@@ -50,6 +70,15 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <head>
+        <script
+          async
+          src="https://www.googletagmanager.com/gtm.js?id=GTM-NN266WM4"
+        ></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());`,
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('livio-theme');var isDark=t==='dark'||((!t||t==='system')&&window.matchMedia('(prefers-color-scheme:dark)').matches);var root=document.documentElement;if(isDark){root.classList.add('dark');root.classList.remove('light');root.setAttribute('data-theme','dark');root.style.colorScheme='dark';}else{root.classList.remove('dark');root.classList.add('light');root.setAttribute('data-theme','light');root.style.colorScheme='light';}}catch(e){}})();`,
@@ -67,6 +96,8 @@ export default function RootLayout({ children }) {
             <MobileBottomNav />
           </PreferencesProvider>
         </ThemeProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

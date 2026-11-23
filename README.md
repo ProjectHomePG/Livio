@@ -1,14 +1,12 @@
 <div align="center">
-  <h1>🏠 Livio (HomePg)</h1>
+  <h1>🏠 Livio - Pg Near Me</h1>
   <p><strong>A Modern, Scalable Platform for PG & Room Discovery</strong></p>
   
   <p>
     <img src="https://img.shields.io/badge/Frontend-Next.js-black?style=for-the-badge&logo=next.js" alt="Next.js" />
     <img src="https://img.shields.io/badge/Backend-Spring_Boot-6DB33F?style=for-the-badge&logo=spring" alt="Spring Boot" />
     <img src="https://img.shields.io/badge/Database-PostgreSQL-316192?style=for-the-badge&logo=postgresql" alt="PostgreSQL" />
-    <img src="https://img.shields.io/badge/Deployment-Vercel_%7C_Render-blueviolet?style=for-the-badge" alt="Deployment" />
     <img src="https://img.shields.io/badge/Database-Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
-    <img src="https://img.shields.io/badge/Database-PostgreSQL-316192?style=for-the-badge&logo=postgresql" alt="PostgreSQL" />
     <img src="https://img.shields.io/badge/Deployment-Vercel_%7C_Supabase-blueviolet?style=for-the-badge" alt="Deployment" />
   </p>
 </div>
