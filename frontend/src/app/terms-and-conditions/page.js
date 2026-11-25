@@ -1,10 +1,13 @@
 import Link from 'next/link';
 
-export const metadata = {
+import { buildPageMetadata } from '../../lib/seo';
+
+export const metadata = buildPageMetadata({
   title: 'Terms & Conditions',
   description:
-    'The terms that govern your use of PG Near Me, including accounts, listings, inquiries, and acceptable conduct.',
-};
+    'The terms that govern your use of Livio PG Near Me, including accounts, property listings, enquiries, and acceptable conduct.',
+  path: '/terms-and-conditions',
+});
 
 const SECTIONS = [
   {

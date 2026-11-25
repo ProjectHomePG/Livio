@@ -11,11 +11,14 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
-export const metadata = {
-  title: 'About Us | Livio - PG Near Me',
+import { buildPageMetadata } from '../../lib/seo';
+
+export const metadata = buildPageMetadata({
+  title: 'About Us & Listing Verification Policy',
   description:
-    'Livio (PG Near Me) helps students and professionals find verified PG and co-living accommodations near colleges, tech parks, and metro stations across India.',
-};
+    'Learn how Livio PG Near Me helps students and professionals discover paying guest, hostel, and co-living accommodations across India with transparent pricing and direct owner enquiries.',
+  path: '/about-us',
+});
 
 const STEPS = [
   {
@@ -38,8 +41,8 @@ const STEPS = [
 const VALUES = [
   {
     icon: ShieldCheck,
-    title: 'Verified listings',
-    text: 'Every property is checked by our ground team so you know the photos, rent, and amenities are real.',
+    title: 'Transparent listing standards',
+    text: 'Listings combine verified business records, host-submitted details, and public guest reviews so you can compare rent, sharing options, and amenities before visiting.',
   },
   {
     icon: MapPin,
@@ -148,10 +151,17 @@ export default function AboutUsPage() {
           and receive booking inquiries from verified seekers. It takes a few minutes to get started.
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
+          <Link
+            href="/list-your-pg"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-primary-700 bg-white hover:bg-rose-50 rounded-xl transition-colors"
+          >
+            List your PG
+            <ArrowRight className="w-4 h-4" />
+          </Link>
           {AUTH_ENABLED && (
             <Link
               href="/register"
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-primary-700 bg-white hover:bg-rose-50 rounded-xl transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white border border-white/40 hover:bg-white/10 rounded-xl transition-colors"
             >
               Become a host
               <ArrowRight className="w-4 h-4" />

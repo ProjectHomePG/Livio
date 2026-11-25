@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Heart, Search, X } from 'lucide-react';
+import { Heart, Search, Sparkles } from 'lucide-react';
 import authService from '@/services/authService';
 import pgService from '@/services/pgService';
 import PGGrid from '@/components/Search/PGGrid';
+import { usePreferences } from '@/context/PreferencesContext';
 
 export default function FavoritesPage() {
-  const [favorites, setFavorites] = useState([]);
+  const { favoriteIds } = usePreferences();
+  const [allFetchedPgs, setAllFetchedPgs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -18,20 +20,20 @@ export default function FavoritesPage() {
     try {
       if (authService.isAuthenticated()) {
         const data = await pgService.getFavorites();
-        setFavorites(data || []);
+        setAllFetchedPgs(data || []);
       } else {
-        const localFavIds = JSON.parse(localStorage.getItem('livio_local_favs') || '[]');
+        const localFavIds = Array.from(favoriteIds.size > 0 ? favoriteIds : new Set(JSON.parse(localStorage.getItem('livio_local_favs') || '[]')));
         if (localFavIds.length > 0) {
           const allPgs = await pgService.getAll();
           const matched = allPgs.filter((p) => localFavIds.includes(p.id));
-          setFavorites(matched);
+          setAllFetchedPgs(matched);
         } else {
-          setFavorites([]);
+          setAllFetchedPgs([]);
         }
       }
     } catch (err) {
       console.error('Failed to load favorites:', err);
-      setError('Failed to load favorites. Please try again.');
+      setError('Failed to load saved stays. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -41,20 +43,35 @@ export default function FavoritesPage() {
     loadFavorites();
   }, []);
 
+  // Filter in real-time according to current favoriteIds
+  const displayedFavorites = useMemo(() => {
+    if (favoriteIds.size === 0) return [];
+    return allFetchedPgs.filter((p) => favoriteIds.has(p.id));
+  }, [allFetchedPgs, favoriteIds]);
+
   return (
     <div className="w-full max-w-[2520px] mx-auto px-4 sm:px-6 md:px-10 xl:px-20 py-8 min-h-[70vh]">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-8 border-b border-slate-200 dark:border-slate-800 gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">Wishlists</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+              Wishlists
+            </h1>
+            {displayedFavorites.length > 0 && (
+              <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-rose-100 dark:bg-rose-950/50 text-primary-600 dark:text-rose-400">
+                {displayedFavorites.length}
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {favorites.length > 0
-              ? `${favorites.length} saved stay${favorites.length !== 1 ? 's' : ''}`
+            {displayedFavorites.length > 0
+              ? `${displayedFavorites.length} saved stay${displayedFavorites.length !== 1 ? 's' : ''} ready to compare and enquire`
               : 'Save places you like to keep track of them here'}
           </p>
         </div>
         <Link
           href="/search"
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-full hover:bg-black transition-colors self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-full hover:bg-black dark:hover:bg-slate-100 transition-colors self-start sm:self-auto shadow-sm"
         >
           <Search className="w-3.5 h-3.5" />
           Browse Stays
@@ -81,26 +98,27 @@ export default function FavoritesPage() {
               </div>
             ))}
           </div>
-        ) : favorites.length === 0 ? (
+        ) : displayedFavorites.length === 0 ? (
           <div className="text-center py-20 max-w-md mx-auto">
             <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-950/30 text-rose-500 flex items-center justify-center mx-auto mb-4">
               <Heart className="w-8 h-8" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-              Create your first wishlist
+              Your wishlist is empty
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-              As you search, tap the heart icon to save your favorite stays and rooms to a wishlist.
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+              As you search, tap the heart icon on any PG card to save your favorite rooms and compare them anytime.
             </p>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-6 py-3 text-xs font-bold text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-xl hover:bg-black transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 text-xs font-bold text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-xl hover:bg-black dark:hover:bg-slate-100 transition-colors shadow-sm"
             >
+              <Sparkles className="w-4 h-4 text-amber-400" />
               Start exploring
             </Link>
           </div>
         ) : (
-          <PGGrid pgs={favorites} />
+          <PGGrid pgs={displayedFavorites} />
         )}
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -215,7 +216,7 @@ export default function AirbnbSearchBar() {
   const handleSelectPGSuggestion = (pg) => {
     setIsSearchModalOpen(false);
     if (pg.slug) {
-      router.push(`/pg?slug=${encodeURIComponent(pg.slug)}`);
+      router.push(`/property/${encodeURIComponent(pg.slug)}`);
     } else {
       router.push(`/pg?id=${pg.id}`);
     }
@@ -568,11 +569,13 @@ export default function AirbnbSearchBar() {
                             >
                               {/* Thumbnail */}
                               <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0">
-                                <img
+                                <Image
                                   src={primaryImg}
                                   alt={pg.title}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                  loading="lazy"
+                                  fill
+                                  sizes="64px"
+                                  unoptimized={!primaryImg.includes('.supabase.co/') && !primaryImg.includes('images.unsplash.com/')}
+                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
                                 />
                               </div>
 

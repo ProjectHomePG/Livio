@@ -34,6 +34,7 @@ export default function Navbar() {
     isMapView,
     toggleMapView,
     setIsMapView,
+    favoriteIds,
   } = usePreferences();
 
   const [user, setUser] = useState(null);
@@ -130,10 +131,25 @@ export default function Navbar() {
 
             {/* List your PG CTA (Large screens only) */}
             <Link
-              href={user ? '/admin/add-pg' : '/login'}
+              href={user && (user.role === 'ROLE_ADMIN' || user.role === 'ROLE_OWNER') ? '/admin/add-pg' : '/list-your-pg'}
               className="hidden xl:inline-block px-3.5 py-2 rounded-full text-xs font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap"
             >
               List your PG
+            </Link>
+
+            {/* Wishlists Quick Access */}
+            <Link
+              href="/favorites"
+              className="relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors hidden lg:flex items-center justify-center"
+              aria-label="Wishlists"
+              title="Saved Wishlists"
+            >
+              <Heart className={`w-4 h-4 ${favoriteIds?.size > 0 ? 'fill-rose-500 text-rose-500' : 'text-slate-500'}`} />
+              {favoriteIds?.size > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-[#FF385C] text-white text-[9px] font-black flex items-center justify-center">
+                  {favoriteIds.size > 9 ? '9+' : favoriteIds.size}
+                </span>
+              )}
             </Link>
 
             {/* Currency / Language selector (Tablet & Desktop) */}
@@ -209,7 +225,7 @@ export default function Navbar() {
                         )}
 
                         <Link
-                          href="/admin/add-pg"
+                          href={user.role === 'ROLE_ADMIN' || user.role === 'ROLE_OWNER' ? '/admin/add-pg' : '/list-your-pg'}
                           onClick={() => setUserMenuOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
@@ -262,7 +278,15 @@ export default function Navbar() {
 
                       <div className="border-t border-slate-100 dark:border-slate-800 pt-1">
                         <Link
-                          href="/login"
+                          href="/favorites"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        >
+                          <Heart className="w-4 h-4 text-slate-500" />
+                          <span>Wishlists</span>
+                        </Link>
+                        <Link
+                          href="/list-your-pg"
                           onClick={() => setUserMenuOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                         >

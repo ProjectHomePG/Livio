@@ -23,6 +23,28 @@ export const reviewService = {
     }
   },
 
+  getAll: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('id, rating, comment, created_at, pg_id, pg:pgs(id, title, city), user:profiles(id, name, email)')
+        .order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data || []).map((review) => ({
+        id: review.id,
+        rating: review.rating,
+        comment: review.comment,
+        createdAt: review.created_at,
+        pgId: review.pg_id,
+        pg: review.pg,
+        user: review.user,
+      }));
+    } catch (error) {
+      console.warn('All reviews fetch failed:', error);
+      return [];
+    }
+  },
+
   create: async (pgId, rating, comment) => {
     const user = authService.getCurrentUser();
     if (!user) throw new Error('You must be signed in to submit a review.');
@@ -47,7 +69,12 @@ export const reviewService = {
       user: data.user,
     };
   },
+
+  delete: async (id) => {
+    const { error } = await supabase.from('reviews').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
 };
 
 export default reviewService;
-

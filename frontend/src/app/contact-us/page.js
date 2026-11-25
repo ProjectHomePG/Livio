@@ -2,11 +2,14 @@ import Link from 'next/link';
 import { Mail, Clock } from 'lucide-react';
 import ContactForm from './ContactForm';
 
-export const metadata = {
-  title: 'Contact Us',
+import { buildPageMetadata } from '../../lib/seo';
+
+export const metadata = buildPageMetadata({
+  title: 'Contact Us & Support',
   description:
-    'Get in touch with the PG Near Me team about listings, support, partnerships, or anything else.',
-};
+    'Get in touch with the Livio PG Near Me support team about property listings, updates, partnerships, or seeker assistance.',
+  path: '/contact-us',
+});
 
 const CHANNELS = [
   {

@@ -1,6 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import authService from '@/services/authService';
+import pgService from '@/services/pgService';
 
 export const CURRENCIES = [
   { code: 'INR', symbol: '₹', label: 'Indian Rupee', rateToInr: 1, region: 'India', isDefault: true },
@@ -38,6 +40,7 @@ export function PreferencesProvider({ children }) {
   const [selectedLocation, setSelectedLocationState] = useState('all');
   const [userCoords, setUserCoordsState] = useState(null);
   const [isMapView, setIsMapView] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState(() => new Set());
 
   const setSelectedLocation = (value) => {
     setSelectedLocationState((prev) => {
@@ -106,14 +109,65 @@ export function PreferencesProvider({ children }) {
           if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
             setUserCoordsState(parsed);
           }
-        } catch (e) {
+        } catch {
           // ignore malformed coords
         }
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
+
+    let mounted = true;
+    async function loadFavoritesOnce() {
+      if (authService.isAuthenticated()) {
+        const ids = await pgService.getFavoriteIds();
+        if (mounted) setFavoriteIds(new Set(ids));
+      } else {
+        try {
+          const localFavs = JSON.parse(localStorage.getItem('livio_local_favs') || '[]');
+          if (mounted) setFavoriteIds(new Set(localFavs));
+        } catch {
+          // ignore
+        }
+      }
+    }
+    loadFavoritesOnce();
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  const isFavorite = useCallback((pgId) => favoriteIds.has(pgId), [favoriteIds]);
+
+  const toggleFavorite = useCallback(async (pgId) => {
+    const currentlyFav = favoriteIds.has(pgId);
+    const nextState = !currentlyFav;
+
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (nextState) next.add(pgId);
+      else next.delete(pgId);
+      return next;
+    });
+
+    try {
+      if (authService.isAuthenticated()) {
+        if (nextState) {
+          await pgService.addFavorite(pgId);
+        } else {
+          await pgService.removeFavorite(pgId);
+        }
+      } else {
+        const localFavs = JSON.parse(localStorage.getItem('livio_local_favs') || '[]');
+        const updated = nextState
+          ? Array.from(new Set([...localFavs, pgId]))
+          : localFavs.filter((id) => id !== pgId);
+        localStorage.setItem('livio_local_favs', JSON.stringify(updated));
+      }
+    } catch (err) {
+      console.warn('Favorite toggle error:', err);
+    }
+  }, [favoriteIds]);
 
   const toggleShowTotalBeforeTax = () => {
     setShowTotalBeforeTax((prev) => {
@@ -185,6 +239,9 @@ export function PreferencesProvider({ children }) {
         isMapView,
         setIsMapView,
         toggleMapView,
+        favoriteIds,
+        isFavorite,
+        toggleFavorite,
       }}
     >
       {children}
@@ -220,6 +277,9 @@ export function usePreferences() {
       isMapView: false,
       setIsMapView: () => {},
       toggleMapView: () => {},
+      favoriteIds: new Set(),
+      isFavorite: () => false,
+      toggleFavorite: async () => {},
     };
   }
   return ctx;

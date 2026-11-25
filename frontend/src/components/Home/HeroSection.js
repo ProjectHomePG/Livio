@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import SearchBar from './SearchBar';
 
 /**
@@ -39,9 +40,9 @@ export default function HeroSection() {
         {/* Quick Suggestion Categories */}
         <div className="mt-10 flex flex-wrap justify-center items-center gap-3 text-xs font-bold text-slate-400">
           <span className="mr-2 uppercase tracking-widest text-[10px] text-slate-500">Popular:</span>
-          <a href="/search?query=Manyata+Tech+Park" className="px-4 py-2 rounded-full border border-slate-700 bg-slate-800/50 hover:bg-primary-600 hover:border-primary-500 hover:text-white transition-all shadow-sm">Manyata Tech Park</a>
-          <a href="/search?query=HSR+Layout" className="px-4 py-2 rounded-full border border-slate-700 bg-slate-800/50 hover:bg-primary-600 hover:border-primary-500 hover:text-white transition-all shadow-sm">HSR Layout</a>
-          <a href="/search?query=DU+North+Campus" className="px-4 py-2 rounded-full border border-slate-700 bg-slate-800/50 hover:bg-primary-600 hover:border-primary-500 hover:text-white transition-all shadow-sm">DU Campus</a>
+          <Link href="/pg-in-bangalore" className="px-4 py-2 rounded-full border border-slate-700 bg-slate-800/50 hover:bg-primary-600 hover:border-primary-500 hover:text-white transition-all shadow-sm">Bangalore</Link>
+          <Link href="/pg-in-bangalore/whitefield" className="px-4 py-2 rounded-full border border-slate-700 bg-slate-800/50 hover:bg-primary-600 hover:border-primary-500 hover:text-white transition-all shadow-sm">Whitefield</Link>
+          <Link href="/pg-in-hyderabad/gachibowli" className="px-4 py-2 rounded-full border border-slate-700 bg-slate-800/50 hover:bg-primary-600 hover:border-primary-500 hover:text-white transition-all shadow-sm">Gachibowli</Link>
         </div>
       </div>
     </section>

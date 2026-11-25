@@ -2,7 +2,6 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import {
-  Sparkles,
   BedSingle,
   Users,
   TrainFront,
@@ -24,7 +23,6 @@ import { usePreferences } from '@/context/PreferencesContext';
 
 export const CATEGORIES = [
   { id: 'all', label: 'All Stays', icon: Home },
-  { id: 'icons', label: 'Icons', icon: Sparkles, badge: 'New' },
   { id: 'single', label: 'Private Rooms', icon: BedSingle },
   { id: 'shared', label: 'Sharing', icon: Users },
   { id: 'metro', label: 'Near Metro', icon: TrainFront },
@@ -119,11 +117,6 @@ export default function CategoryBar({ selectedCategory = 'all', onSelectCategory
                           isSelected ? 'stroke-[2.2]' : 'stroke-[1.6]'
                         }`}
                       />
-                      {cat.badge && (
-                        <span className="absolute -top-1.5 -right-3 text-[9px] font-extrabold uppercase bg-rose-500 text-white px-1.5 py-0.2 rounded-full scale-90">
-                          {cat.badge}
-                        </span>
-                      )}
                     </div>
                     <span className="text-[11px] sm:text-xs whitespace-nowrap tracking-tight">
                       {cat.label}
