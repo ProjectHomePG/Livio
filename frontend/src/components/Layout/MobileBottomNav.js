@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, Heart, User } from 'lucide-react';
+import { Search, Heart, User, PlusCircle } from 'lucide-react';
 import authService from '@/services/authService';
+import { AUTH_ENABLED } from '@/config';
 import { usePreferences } from '@/context/PreferencesContext';
 
 export default function MobileBottomNav() {
@@ -54,15 +55,19 @@ export default function MobileBottomNav() {
       </Link>
 
       <Link
-        href={user ? '/favorites' : '/login'}
+        href={user ? '/favorites' : AUTH_ENABLED ? '/login' : '/list-your-pg'}
         className={`flex flex-col items-center gap-1 text-[11px] font-semibold transition-colors ${
-          pathname === '/login' || pathname === '/register'
+          pathname === '/login' || pathname === '/register' || pathname === '/list-your-pg'
             ? 'text-primary-500 font-bold'
             : 'text-slate-500 dark:text-slate-400'
         }`}
       >
-        <User className="w-5 h-5 stroke-[2.2]" />
-        <span>{user ? 'Profile' : 'Log in'}</span>
+        {user || AUTH_ENABLED ? (
+          <User className="w-5 h-5 stroke-[2.2]" />
+        ) : (
+          <PlusCircle className="w-5 h-5 stroke-[2.2]" />
+        )}
+        <span>{user ? 'Profile' : AUTH_ENABLED ? 'Log in' : 'List PG'}</span>
       </Link>
     </nav>
   );

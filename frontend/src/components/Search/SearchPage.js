@@ -12,6 +12,7 @@ import MapView from './MapView';
 import LoadingSkeleton from '../Shared/LoadingSkeleton';
 import { usePreferences } from '@/context/PreferencesContext';
 import { getCurrentCoords } from '@/utils/geolocation';
+import { trackSearch } from '@/lib/analytics';
 
 function distanceKm(lat1, lon1, lat2, lon2) {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -81,6 +82,7 @@ export default function SearchPage() {
     setLoading(true);
     setError(null);
     try {
+      trackSearch(currentFilters.query, currentFilters);
       const data = await pgService.search(currentFilters.query || '', currentFilters);
       let list = data || [];
       if (isNearMeMode) {
@@ -255,9 +257,9 @@ export default function SearchPage() {
             ) : isNearMeMode && !hasNearMeCoords ? (
               <div className="text-center py-24 max-w-md mx-auto">
                 <Navigation className="w-12 h-12 text-primary-500 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
                   See stays near you
-                </h3>
+                </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                   Allow location access and we&apos;ll list the closest PGs first, with distances.
                 </p>
@@ -275,9 +277,9 @@ export default function SearchPage() {
             ) : (
               <div className="text-center py-24 max-w-md mx-auto">
                 <MapPin className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
                   No results found
-                </h3>
+                </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                   Try changing your location, expanding your price range, or clearing filters.
                 </p>

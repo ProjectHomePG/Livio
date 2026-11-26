@@ -1,5 +1,6 @@
 import HomePageClient from '../components/Home/HomePageClient';
 import HomeSeoContent from '../components/Home/HomeSeoContent';
+import { getInitialHomePgs } from '../lib/pgServer';
 import {
   HOME_TITLE,
   HOME_DESCRIPTION,
@@ -7,38 +8,19 @@ import {
   HOME_FAQS,
   SITE_NAME,
   SITE_URL,
+  SUPPORT_EMAIL,
+  buildPageMetadata,
+  safeJsonLd,
 } from '../lib/seo';
 
-export const metadata = {
+export const revalidate = 1800;
+
+export const metadata = buildPageMetadata({
   title: HOME_TITLE,
   description: HOME_DESCRIPTION,
+  path: '/',
   keywords: HOME_KEYWORDS,
-  alternates: {
-    canonical: '/',
-  },
-  robots: {
-    index: true,
-    follow: true,
-    'max-image-preview': 'large',
-    'max-snippet': -1,
-    'max-video-preview': -1,
-  },
-  openGraph: {
-    title: HOME_TITLE,
-    description: HOME_DESCRIPTION,
-    url: '/',
-    siteName: `${SITE_NAME} - PG Near Me`,
-    locale: 'en_IN',
-    type: 'website',
-    countryName: 'India',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: HOME_TITLE,
-    description: HOME_DESCRIPTION,
-    site: '@livio',
-  },
-};
+});
 
 const websiteJsonLd = {
   '@context': 'https://schema.org',
@@ -63,7 +45,7 @@ const websiteJsonLd = {
       '@type': 'Organization',
       '@id': `${SITE_URL}/#organization`,
       name: SITE_NAME,
-      alternateName: 'PG Near Me',
+      alternateName: 'Livio PG Near Me',
       url: `${SITE_URL}/`,
       logo: {
         '@type': 'ImageObject',
@@ -71,7 +53,13 @@ const websiteJsonLd = {
         width: 512,
         height: 512,
       },
-      sameAs: [`${SITE_URL}/`],
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: SUPPORT_EMAIL,
+        areaServed: 'IN',
+        availableLanguage: ['English', 'Hindi'],
+      },
     },
     {
       '@type': 'WebPage',
@@ -99,31 +87,33 @@ const faqJsonLd = {
   })),
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const initialPgs = await getInitialHomePgs(48);
+
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(websiteJsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(faqJsonLd) }}
       />
 
       <header className="w-full bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 transition-colors">
         <div className="max-w-[1120px] mx-auto px-4 sm:px-6 md:px-10 pt-6 sm:pt-8 pb-5 space-y-1.5">
           <h1 className="text-lg sm:text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
-            PG Near Me - Verified Paying Guest, Hostel &amp; Co-Living Stays Near You
+            PG Near Me - Paying Guest, Hostel &amp; Co-Living Stays Across India
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-            Search PG for boys, PG for girls, student PG and coliving PG near colleges, tech parks and
-            metro stations across India - free, verified and broker-free.
+            Search boys PG, girls PG, student PG and co-living spaces near colleges, tech parks and
+            metro stations across 14 Indian cities — direct owner enquiries with zero brokerage.
           </p>
         </div>
       </header>
 
-      <HomePageClient />
+      <HomePageClient initialPgs={initialPgs} />
 
       <HomeSeoContent />
     </>

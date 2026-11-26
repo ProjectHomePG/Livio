@@ -22,7 +22,7 @@ function distanceKm(lat1, lon1, lat2, lon2) {
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export default function HomePage() {
+export default function HomePage({ initialPgs = [] }) {
   const {
     isFilterModalOpen,
     setIsFilterModalOpen,
@@ -35,8 +35,8 @@ export default function HomePage() {
     setIsMapView,
   } = usePreferences();
 
-  const [pgs, setPgs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [pgs, setPgs] = useState(initialPgs);
+  const [loading, setLoading] = useState(initialPgs.length === 0);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [activeFilters, setActiveFilters] = useState(null);
   const [locating, setLocating] = useState(false);
@@ -45,19 +45,25 @@ export default function HomePage() {
     selectedLocation !== 'near_me' ||
     (userCoords && typeof userCoords.lat === 'number' && typeof userCoords.lng === 'number');
 
-  // Load all PGs from Supabase
+  // Hydrate full inventory from Supabase in background so filtering/GPS works across all cities
   useEffect(() => {
+    let mounted = true;
     async function loadData() {
       try {
         const data = await pgService.getAll();
-        setPgs(data || []);
+        if (mounted && Array.isArray(data) && data.length > 0) {
+          setPgs(data);
+        }
       } catch (err) {
         console.error('Failed to load PGs:', err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
     loadData();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Handle location option selection
@@ -81,97 +87,101 @@ export default function HomePage() {
     }
   };
 
+  // Pre-compute lowercase search haystacks once so filtering 1,600+ listings is instantaneous
+  const indexedPgs = useMemo(
+    () =>
+      pgs.map((pg) => ({
+        pg,
+        cityLower: (pg.city || '').toLowerCase(),
+        addrLower: (pg.address || '').toLowerCase(),
+        titleLower: (pg.title || '').toLowerCase(),
+        descLower: (pg.description || '').toLowerCase(),
+      })),
+    [pgs]
+  );
+
   // Filter listings based on location, active category & filter modal settings
   const filteredPgs = useMemo(() => {
-    let result = [...pgs];
+    let items = indexedPgs;
 
     // 1. Location Filter
     if (selectedLocation === 'near_me') {
       if (userCoords && typeof userCoords.lat === 'number') {
-        result = result
-          .filter((pg) => typeof pg.latitude === 'number' && typeof pg.longitude === 'number')
-          .map((pg) => ({
+        return items
+          .filter(({ pg }) => typeof pg.latitude === 'number' && typeof pg.longitude === 'number')
+          .map(({ pg }) => ({
             ...pg,
             distance: distanceKm(userCoords.lat, userCoords.lng, pg.latitude, pg.longitude),
           }))
           .sort((a, b) => a.distance - b.distance);
-      } else {
-        // No GPS coords yet — show the enable-location prompt instead of unsorted listings
-        result = [];
       }
+      return [];
     } else if (selectedLocation && selectedLocation !== 'all') {
       const query = selectedLocation.toLowerCase();
-      result = result.filter((pg) => {
-        const city = (pg.city || '').toLowerCase();
-        const addr = (pg.address || '').toLowerCase();
-        const title = (pg.title || '').toLowerCase();
-        return city.includes(query) || addr.includes(query) || title.includes(query);
-      });
+      items = items.filter(
+        ({ cityLower, addrLower, titleLower }) =>
+          cityLower.includes(query) || addrLower.includes(query) || titleLower.includes(query)
+      );
     }
 
     // 2. Category Filter
     if (selectedCategory && selectedCategory !== 'all') {
-      result = result.filter((pg) => {
-        const desc = (pg.description || '').toLowerCase();
-        const title = (pg.title || '').toLowerCase();
-        const addr = (pg.address || '').toLowerCase();
+      items = items.filter(({ pg, descLower, titleLower, addrLower }) => {
         const price = pg.priceTriple || pg.priceDouble || pg.priceSingle || pg.price || 0;
 
         switch (selectedCategory) {
-          case 'icons':
-            return (pg.rating ?? 0) >= 4.8 || price > 13000;
           case 'single':
             return (
               pg.sharingType === 'SINGLE' ||
               (pg.priceSingle && pg.priceSingle > 0) ||
-              desc.includes('single')
+              descLower.includes('single')
             );
           case 'shared':
             return (
               pg.sharingType === 'DOUBLE' ||
               pg.sharingType === 'TRIPLE' ||
-              desc.includes('sharing')
+              descLower.includes('sharing')
             );
           case 'metro':
             return (
-              desc.includes('metro') ||
-              title.includes('metro') ||
-              addr.includes('metro')
+              descLower.includes('metro') ||
+              titleLower.includes('metro') ||
+              addrLower.includes('metro')
             );
           case 'techpark':
             return (
-              desc.includes('tech') ||
-              desc.includes('park') ||
-              desc.includes('itpl') ||
-              title.includes('tech') ||
-              addr.includes('tech')
+              descLower.includes('tech') ||
+              descLower.includes('park') ||
+              descLower.includes('itpl') ||
+              titleLower.includes('tech') ||
+              addrLower.includes('tech')
             );
           case 'luxury':
             return price >= 14000 || (pg.rating ?? 0) >= 4.85;
           case 'food':
             return (
-              desc.includes('food') ||
-              desc.includes('meal') ||
-              desc.includes('breakfast') ||
-              desc.includes('mess')
+              descLower.includes('food') ||
+              descLower.includes('meal') ||
+              descLower.includes('breakfast') ||
+              descLower.includes('mess')
             );
           case 'ac':
-            return desc.includes('ac') || desc.includes('air condition');
+            return descLower.includes('ac') || descLower.includes('air condition');
           case 'female':
             return pg.genderType === 'FEMALE';
           case 'male':
             return pg.genderType === 'MALE';
           case 'coliving':
-            return pg.genderType === 'UNISEX' || desc.includes('coliving');
+            return pg.genderType === 'UNISEX' || descLower.includes('coliving');
           case 'budget':
-            return price <= 9000;
+            return price > 0 && price <= 9000;
           case 'top_rated':
             return (pg.rating ?? 0) >= 4.6;
           case 'students':
             return (
-              desc.includes('student') ||
-              desc.includes('college') ||
-              desc.includes('campus')
+              descLower.includes('student') ||
+              descLower.includes('college') ||
+              descLower.includes('campus')
             );
           default:
             return true;
@@ -182,27 +192,27 @@ export default function HomePage() {
     // 3. Modal Filters
     if (activeFilters) {
       if (activeFilters.placeType && activeFilters.placeType !== 'ALL') {
-        result = result.filter((pg) => pg.sharingType === activeFilters.placeType);
+        items = items.filter(({ pg }) => pg.sharingType === activeFilters.placeType);
       }
       if (activeFilters.gender && activeFilters.gender !== 'ALL') {
-        result = result.filter((pg) => pg.genderType === activeFilters.gender);
+        items = items.filter(({ pg }) => pg.genderType === activeFilters.gender);
       }
       if (activeFilters.minPrice) {
         const min = Number(activeFilters.minPrice);
-        result = result.filter(
-          (pg) => (pg.priceTriple || pg.priceDouble || pg.price || 0) >= min
+        items = items.filter(
+          ({ pg }) => (pg.priceTriple || pg.priceDouble || pg.price || 0) >= min
         );
       }
       if (activeFilters.maxPrice) {
         const max = Number(activeFilters.maxPrice);
-        result = result.filter(
-          (pg) => (pg.priceTriple || pg.priceDouble || pg.price || 0) <= max
+        items = items.filter(
+          ({ pg }) => (pg.priceTriple || pg.priceDouble || pg.price || 0) <= max
         );
       }
     }
 
-    return result;
-  }, [pgs, selectedLocation, userCoords, selectedCategory, activeFilters]);
+    return items.map(({ pg }) => pg);
+  }, [indexedPgs, selectedLocation, userCoords, selectedCategory, activeFilters]);
 
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900 transition-colors">
@@ -288,9 +298,9 @@ export default function HomePage() {
                 <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-primary-500">
                   <Navigation className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                   See stays near you
-                </h3>
+                </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Allow location access and we&apos;ll list the closest PGs first, with walking distances.
                 </p>
@@ -308,9 +318,9 @@ export default function HomePage() {
                 <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
                   <MapPin className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                   No stays found in {selectedLocation}
-                </h3>
+                </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Try switching to another nearby locality or exploring All India.
                 </p>

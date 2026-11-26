@@ -1,10 +1,13 @@
 import Link from 'next/link';
 
-export const metadata = {
+import { buildPageMetadata } from '../../lib/seo';
+
+export const metadata = buildPageMetadata({
   title: 'Privacy Policy',
   description:
-    'How PG Near Me collects, uses, stores, and protects your personal information when you search, list, or contact us.',
-};
+    'How Livio PG Near Me collects, uses, stores, and protects your personal information when you search, list, or contact us.',
+  path: '/privacy-policy',
+});
 
 const SECTIONS = [
   {

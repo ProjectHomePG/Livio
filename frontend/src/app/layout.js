@@ -1,4 +1,3 @@
-import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/Layout/Navbar";
 import Footer from "../components/Layout/Footer";
@@ -8,75 +7,69 @@ import { PreferencesProvider } from "../context/PreferencesContext";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
-const inter = Inter({
-  variable: "--font-sans",
-  subsets: ["latin"],
-});
-
-const outfit = Outfit({
-  variable: "--font-heading",
-  subsets: ["latin"],
-});
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:8082";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bestpgnearme.com";
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "PG Near Me",
-    template: "%s | Livio - PG Near Me",
+    default: "Livio PG Near Me | Verified Paying Guest and Co-Living",
+    template: "%s | Livio PG Near Me",
   },
   description:
-    "Livio (PG Near Me) - Find verified paying guest for boys & girls, student PG, coliving PG, hostel and rooms near tech parks, colleges, metro stations and corporate hubs across India.",
+    "Livio PG Near Me. Find verified paying guest stays for boys and girls, student PG, coliving spaces, hostels, and rooms near tech parks, colleges, metro stations and corporate hubs across India.",
   keywords: [
     "PG Near Me",
-    "PG near",
+    "PG accommodation in India",
     "PG for boys",
     "PG for girls",
-    "colive PG",
     "coliving PG",
-    "hostel",
+    "hostel near me",
     "paying guest",
     "student PG",
-    "PG in",
-    "paying guest for boys",
-    "paying guest for girls",
-    "boys and girls hostel",
+    "PG for working professionals",
     "Livio",
   ],
   authors: [{ name: "Livio" }],
   openGraph: {
-    title: "Livio - PG Near Me | Verified PG, Rooms & Co-Living",
+    title: "Livio PG Near Me | Verified PG, Rooms and Co-Living",
     description:
-      "Find a PG near me - verified paying guest for boys & girls, student PG, coliving PG and hostel stays near colleges and tech parks.",
+      "Find a PG near me with verified paying guest stays for boys and girls, student PG, coliving spaces, and hostel stays near colleges and tech parks across India.",
     url: siteUrl,
-    siteName: "Livio - PG Near Me",
+    siteName: "Livio PG Near Me",
     locale: "en_IN",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Livio - PG Near Me | Verified PG, Rooms & Co-Living",
+    title: "Livio PG Near Me | Verified PG, Rooms and Co-Living",
     description:
-      "Find a PG near me - verified paying guest for boys & girls, student PG, coliving PG and hostel stays near colleges and tech parks.",
+      "Find a PG near me with verified paying guest stays for boys and girls, student PG, coliving spaces, and hostel stays near colleges and tech parks across India.",
   },
 };
 
 export default function RootLayout({ children }) {
   return (
     <html
-      lang="en"
-      className={`${inter.variable} ${outfit.variable} h-full antialiased`}
+      lang="en-IN"
+      className="h-full antialiased"
       suppressHydrationWarning
     >
       <head>
+        <link rel="preconnect" href="https://qtnevwoavtfipksvxipw.supabase.co" />
         <script
           async
           src="https://www.googletagmanager.com/gtm.js?id=GTM-NN266WM4"
         ></script>
+        {gaMeasurementId && (
+          <script
+            async
+            src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}
+          ></script>
+        )}
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());`,
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());${gaMeasurementId ? `gtag('config',${JSON.stringify(gaMeasurementId)},{send_page_view:true});` : ''}`,
           }}
         />
         <script

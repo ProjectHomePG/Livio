@@ -1,17 +1,23 @@
+import { SITE_URL } from '../lib/seo';
+
 export const dynamic = "force-static";
 
 export default function robots() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:8082";
-
   return {
     rules: [
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin/", "/favorites", "/login", "/register"],
+        disallow: [
+          "/admin/",
+          "/favorites",
+          "/login",
+          "/register",
+          "/api/",
+        ],
       },
     ],
-    sitemap: `${baseUrl}/sitemap.xml`,
-    host: baseUrl,
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   };
 }

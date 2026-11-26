@@ -1,8 +1,15 @@
-"use client";
-
 import React, { Suspense } from 'react';
 import SearchPage from '@/components/Search/SearchPage';
 import { Compass } from 'lucide-react';
+import { buildPageMetadata } from '@/lib/seo';
+
+export const metadata = buildPageMetadata({
+  title: 'Search PG Accommodations Near You',
+  description:
+    'Filter PG rooms, hostels, and co-living spaces across India by locality, monthly budget, sharing type, and resident policy.',
+  path: '/search',
+  noIndex: true,
+});
 
 export default function SearchRoute() {
   return (

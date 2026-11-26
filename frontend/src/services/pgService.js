@@ -1,12 +1,13 @@
 import { supabase } from '../lib/supabase';
 import authService from './authService';
 
-const LIST_SELECT = '*, images(id,url,is_primary)';
+const LIST_SELECT =
+  'id,title,slug,description,address,city,state,zip_code,price,price_single,price_double,price_triple,gender_type,sharing_type,property_type,status,latitude,longitude,rating,reviews_count,owner_id,created_at,updated_at,images(id,url,is_primary)';
 const DETAIL_SELECT =
   LIST_SELECT +
   ', amenities(id,name,icon)' +
   ', pg_nearby_places(id,name,distance,type)' +
-  ', owner:profiles(id,name,email,role)' +
+  ', owner:profiles(id,name,role)' +
   ', reviews(id,rating,comment,created_at,user:profiles(id,name))';
 
 const SNAKE_TO_CAMEL = {
@@ -75,6 +76,19 @@ function toRow(data) {
   if (data.state !== undefined) row.state = data.state;
   if (data.zipCode !== undefined) row.zip_code = data.zipCode;
   if (data.price !== undefined) row.price = Number(data.price);
+  if (data.priceSingle !== undefined && data.priceSingle !== null && data.priceSingle !== '') {
+    row.price_single = Number(data.priceSingle);
+  }
+  if (data.priceDouble !== undefined && data.priceDouble !== null && data.priceDouble !== '') {
+    row.price_double = Number(data.priceDouble);
+  }
+  if (data.priceTriple !== undefined && data.priceTriple !== null && data.priceTriple !== '') {
+    row.price_triple = Number(data.priceTriple);
+  }
+  if (data.depositAmount !== undefined && data.depositAmount !== null && data.depositAmount !== '') {
+    row.deposit_amount = Number(data.depositAmount);
+  }
+  if (data.phone !== undefined) row.phone = data.phone;
   if (data.rules !== undefined) row.rules = data.rules;
   if (data.genderType !== undefined) row.gender_type = data.genderType;
   if (data.sharingType !== undefined) row.sharing_type = data.sharingType;
@@ -139,37 +153,71 @@ function throwIf(error, fallback) {
 
 export const pgService = {
   getAll: async () => {
-    const { data, error } = await orderImages(
-      supabase.from('pgs').select(LIST_SELECT).limit(10000)
-    );
-    throwIf(error, 'Failed to load PG stays');
-    return mapList(data);
+    const pageSize = 1000;
+    const allRows = [];
+    let offset = 0;
+
+    while (true) {
+      const { data, error } = await orderImages(
+        supabase
+          .from('pgs')
+          .select(LIST_SELECT)
+          .eq('status', 'APPROVED')
+          .order('id', { ascending: true })
+          .range(offset, offset + pageSize - 1)
+      );
+      throwIf(error, 'Failed to load PG stays');
+      if (!data || data.length === 0) break;
+      allRows.push(...data);
+      if (data.length < pageSize) break;
+      offset += pageSize;
+    }
+
+    return mapList(allRows);
   },
 
   search: async (query, filters = {}) => {
-    let qb = supabase.from('pgs').select(LIST_SELECT).limit(10000);
+    const buildQuery = (from, to) => {
+      let qb = supabase
+        .from('pgs')
+        .select(LIST_SELECT)
+        .eq('status', 'APPROVED')
+        .order('id', { ascending: true })
+        .range(from, to);
 
-    const q = (query || '').trim();
-    if (q) {
-      const safe = q.replace(/[,()\\]/g, ' ').trim();
-      if (safe) {
-        qb = qb.or(
-          `title.ilike.%${safe}%,city.ilike.%${safe}%,state.ilike.%${safe}%,address.ilike.%${safe}%`
-        );
+      const q = (query || '').trim();
+      if (q) {
+        const safe = q.replace(/[,()\\]/g, ' ').trim();
+        if (safe) {
+          qb = qb.or(
+            `title.ilike.%${safe}%,city.ilike.%${safe}%,state.ilike.%${safe}%,address.ilike.%${safe}%`
+          );
+        }
       }
-    }
-    if (filters.gender && filters.gender !== 'ALL') {
-      qb = qb.ilike('gender_type', filters.gender);
-    }
-    if (filters.sharing && filters.sharing !== 'ALL') {
-      qb = qb.ilike('sharing_type', filters.sharing);
-    }
-    if (filters.minPrice) qb = qb.gte('price', Number(filters.minPrice));
-    if (filters.maxPrice) qb = qb.lte('price', Number(filters.maxPrice));
+      if (filters.gender && filters.gender !== 'ALL') {
+        qb = qb.ilike('gender_type', filters.gender);
+      }
+      if (filters.sharing && filters.sharing !== 'ALL') {
+        qb = qb.ilike('sharing_type', filters.sharing);
+      }
+      if (filters.minPrice) qb = qb.gte('price', Number(filters.minPrice));
+      if (filters.maxPrice) qb = qb.lte('price', Number(filters.maxPrice));
+      return qb;
+    };
 
-    const { data, error } = await orderImages(qb);
-    throwIf(error, 'Search failed');
-    let results = mapList(data);
+    const pageSize = 1000;
+    const allRows = [];
+    let offset = 0;
+    while (true) {
+      const { data, error } = await orderImages(buildQuery(offset, offset + pageSize - 1));
+      throwIf(error, 'Search failed');
+      if (!data || data.length === 0) break;
+      allRows.push(...data);
+      if (data.length < pageSize) break;
+      offset += pageSize;
+    }
+
+    let results = mapList(allRows);
 
     if (filters.sortBy && results.length > 0) {
       if (filters.sortBy === 'PRICE_LOW_HIGH') {
@@ -257,6 +305,7 @@ export const pgService = {
     row.owner_id = user.id;
     row.slug = await uniqueSlug(pgData.title);
     row.status = 'APPROVED';
+    row.property_type = row.property_type || 'PG';
     applyPriceFallback(row);
 
     const { data, error } = await supabase
@@ -265,6 +314,16 @@ export const pgService = {
       .select(LIST_SELECT)
       .single();
     throwIf(error, 'Failed to create listing');
+
+    if (Array.isArray(pgData.imageUrls) && pgData.imageUrls.length > 0 && data?.id) {
+      const imageRows = pgData.imageUrls.map((url, idx) => ({
+        pg_id: data.id,
+        url,
+        is_primary: idx === 0,
+      }));
+      await supabase.from('images').insert(imageRows);
+    }
+
     return mapPg(data);
   },
 
@@ -278,6 +337,19 @@ export const pgService = {
       .select('id');
     throwIf(error, 'Failed to update listing');
     if (!data?.length) throw new Error('You are not allowed to edit this listing.');
+
+    if (Array.isArray(pgData.imageUrls)) {
+      await supabase.from('images').delete().eq('pg_id', id);
+      if (pgData.imageUrls.length > 0) {
+        const imageRows = pgData.imageUrls.map((url, idx) => ({
+          pg_id: id,
+          url,
+          is_primary: idx === 0,
+        }));
+        await supabase.from('images').insert(imageRows);
+      }
+    }
+
     const { data: full, error: fullError } = await supabase
       .from('pgs')
       .select(LIST_SELECT)
@@ -348,6 +420,22 @@ export const pgService = {
       return mapList((data || []).map((f) => f.pg).filter(Boolean));
     } catch (err) {
       console.warn('Get favorites failed:', err.message);
+      return [];
+    }
+  },
+
+  getFavoriteIds: async () => {
+    try {
+      const user = authService.getCurrentUser();
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('pg_id')
+        .eq('user_id', user.id);
+      if (error) throw new Error(error.message);
+      return (data || []).map((f) => f.pg_id);
+    } catch (err) {
+      console.warn('Get favorite IDs failed:', err.message);
       return [];
     }
   },
